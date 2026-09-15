@@ -1,3 +1,4 @@
 {"format_version":1,"id":"18d5991b66764190b93c0045fe964c41ae2c41fcb26195bf","commits":["43463b2e8eb60dd2a1e2356c3ab290490f84d7af"],"user_facing":true,"description":"**The tool describes itself with one sentence everywhere, including `--help`.** The `--help` header, README, docs site, npm and PyPI metadata and the Homebrew formula now carry the same line.","type":"fix"}
 {"format_version":1,"id":"18d59d867a62aa7f40e60493c64f4680a41e7b98d6e73077","commits":["6309a68725c70b6eecaa8d9243c381628de5d181"],"user_facing":false}
 {"format_version":1,"id":"18d59db85de07c9d87e8f338fedb420c8617af2f22ddac77","commits":["66f3d18b7e4e228fd0479656f59fa057dd88bbfa","8c9abb56b383f68c0c7a5f748722ec0f45d77bd6","bfda502a8c4454c1f371577739531fa88e858202"],"user_facing":false}
+{"format_version":1,"id":"18d59db9cfbfa9f1006011ec6644451f9456a60c9dca95c0","commits":["8b4ba73fe5c360677260f0706ee421c256c8da1f"],"user_facing":false}
