@@ -6,7 +6,6 @@ __pycache__/
 .DS_Store
 coverage/
 dist/
-docs/_build/
 *.egg-info/
 .rlsbl-notes-*.tmp
 .rlsbl/lock
