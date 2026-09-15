@@ -1,6 +1,4 @@
-// Command saferm replaces rm by archiving every deletion with a mandatory
-// reason and the context it ran in, so deleted files can be listed, inspected
-// and restored.
+// Command saferm: The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag.
 //
 // Every archived path is recorded in a SQLite database alongside the reason
 // the caller gave for the deletion, the environment it ran in, the git state
@@ -16,7 +14,7 @@ import (
 // tests can construct the same app and assert over its registration (see
 // classification_test.go); main does nothing but run it.
 func newApp() *strictcli.App {
-	app := strictcli.NewApp("saferm", Version, "AI-first safe rm replacement",
+	app := strictcli.NewApp("saferm", Version, "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag",
 		strictcli.WithEnvPrefix("SAFERM"),
 		strictcli.WithInfraRoot("SAFERM_HOME", "~/.saferm"),
 		strictcli.WithConfig(),

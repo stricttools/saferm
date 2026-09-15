@@ -1,11 +1,11 @@
 +++
 title = "saferm"
-description = "saferm is an AI-first safe rm replacement that archives files instead of deleting them, capturing metadata, with a JSON surface programs can drive."
+description = "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag"
 +++
 
 # saferm
 
-AI-first safe rm replacement. Archives files instead of deleting them.
+The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag
 
 ## CLI Reference
 

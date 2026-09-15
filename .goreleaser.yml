@@ -34,7 +34,7 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://github.com/smm-h/saferm"
-    description: "AI-first safe rm replacement"
+    description: "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag"
     license: "MIT"
     install: |
       bin.install "saferm"

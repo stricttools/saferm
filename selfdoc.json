@@ -29,7 +29,7 @@
   "docs": "docs/",
   "output": "docs/_build/",
   "base_url": "https://smmh.dev/saferm",
-  "description": "Command-line replacement for rm that archives every deletion with a mandatory reason and the context it ran in, so deleted files can be listed, inspected and restored",
+  "description": "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag",
   "repo": "https://github.com/smm-h/saferm",
   "search_engine": "pagefind",
   "author": {
