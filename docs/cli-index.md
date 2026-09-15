@@ -10,7 +10,7 @@ nav_order = 91
 
 # saferm CLI Reference
 
-AI-first safe rm replacement
+The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag
 
 Version: :-: var key="project.version"
 

@@ -2,8 +2,8 @@
   "schema_version": 1,
   "name": "saferm",
   "slug": "saferm",
-  "version": "0.10.1",
-  "description": "Command-line replacement for rm that archives every deletion with a mandatory reason and the context it ran in, so deleted files can be listed, inspected and restored",
+  "version": "0.10.2",
+  "description": "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag",
   "language": "go",
   "base_url": "https://smmh.dev/saferm",
   "pages": [
@@ -1485,6 +1485,6 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-09-14T17:15:01.927184+00:00",
+  "last_gen": "2026-09-15T20:39:15.390849+00:00",
   "theme": "minimal"
 }

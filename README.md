@@ -2,7 +2,7 @@
 
 # saferm
 
-saferm is a command-line replacement for rm that archives every deletion with a mandatory reason and the context it ran in, so deleted files can be listed, inspected and restored. It is built for AI coding agents and the scripts they run, where an unexplained `rm` is both unrecoverable and unaccountable. No deletion proceeds without a `--description` saying why, and that reason is stored with the environment, git state and calling process beside the archived copy in `~/.saferm/`.
+The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag
 
 ## Quick start
 
