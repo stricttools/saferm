@@ -1,0 +1,1 @@
+{"format_version":1,"id":"18d5991b66764190b93c0045fe964c41ae2c41fcb26195bf","commits":["43463b2e8eb60dd2a1e2356c3ab290490f84d7af"],"user_facing":true,"description":"**The tool describes itself with one sentence everywhere, including `--help`.** The `--help` header, README, docs site, npm and PyPI metadata and the Homebrew formula now carry the same line.","type":"fix"}
