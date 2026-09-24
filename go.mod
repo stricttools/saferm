@@ -2,6 +2,8 @@ module github.com/smm-h/saferm
 
 go 1.25.7
 
+toolchain go1.26.6
+
 require github.com/smm-h/strictcli/go v0.33.0
 
 require (
