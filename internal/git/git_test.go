@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/smm-h/stricttest/go/hygiene"
+	"github.com/stricttools/testisolation/go/hygiene"
 )
 
 // initGitRepo creates a bare git repo in dir with an initial commit.
 func initGitRepo(t *testing.T, dir string) {
 	t.Helper()
-	// stricttest's floor: no test here may read the developer's git config,
+	// testisolation's floor: no test here may read the developer's git config,
 	// identity or credentials, and none may reach the network.
 	hygiene.Isolate(t)
 	for _, args := range [][]string{

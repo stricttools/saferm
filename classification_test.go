@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/smm-h/strictcli/go/strictcli"
-	"github.com/smm-h/stricttest/go/hygiene"
+	"github.com/stricttools/testisolation/go/hygiene"
 )
 
 // classification pins every command's strictcli effect classification and its

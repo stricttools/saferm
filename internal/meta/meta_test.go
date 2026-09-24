@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/stricttest/go/hygiene"
+	"github.com/stricttools/testisolation/go/hygiene"
 )
 
-// isolate binds stricttest's environment floor. It matters more here than
+// isolate binds testisolation's environment floor. It matters more here than
 // anywhere else in saferm: this package's whole job is to capture the process
 // environment into deletion metadata, so a test running with the developer's
 // real credentials exported is a test that could put them somewhere.

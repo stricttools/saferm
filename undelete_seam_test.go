@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/smm-h/strictcli/go/strictcli"
-	"github.com/smm-h/stricttest/go/hygiene"
+	"github.com/stricttools/testisolation/go/hygiene"
 )
 
 // The cross-device branch of a file restore is unreachable from the outside: it
