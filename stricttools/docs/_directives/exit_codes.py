@@ -18,7 +18,7 @@ import re
 def _repo_root() -> str:
     """Walk up from this file until a directory holding selfdoc.json is found.
 
-    The docs tree moved under ``.stricttools/``, so a fixed number of parents
+    The docs tree moved under ``stricttools/``, so a fixed number of parents
     is wrong by construction; the project marker is what locates the root.
     """
     here = os.path.abspath(__file__)

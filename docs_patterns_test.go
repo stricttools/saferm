@@ -15,7 +15,7 @@ import (
 // "(?i)key(?!BOARD)", which RE2 rejects -- and until an uncompilable pattern
 // became a hard error, copying it silently switched the `key` redaction off.
 //
-// This test extracts the patterns from the docs SOURCE (.stricttools/docs/*.md,
+// This test extracts the patterns from the docs SOURCE (stricttools/docs/*.md,
 // the
 // templates selfdoc renders README.md and CLAUDE.md from), so a future doc edit
 // that introduces an illegal pattern fails here rather than in a user's config.
@@ -93,7 +93,7 @@ func collectDocPatterns(t *testing.T, docsDir string) []docPattern {
 
 func TestDocumentedDenylistPatternsCompile(t *testing.T) {
 	_, thisFile, _, _ := runtime.Caller(0)
-	docsDir := filepath.Join(filepath.Dir(thisFile), ".stricttools", "docs")
+	docsDir := filepath.Join(filepath.Dir(thisFile), "stricttools", "docs")
 
 	patterns := collectDocPatterns(t, docsDir)
 
