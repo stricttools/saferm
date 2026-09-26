@@ -1,1 +1,5 @@
 format_version = 1
+
+[[accepted]]
+word = "saferm"
+meaning = "This tool: rm with an audit trail and undo, archiving deleted files with integrity verification and SQLite metadata so they can be restored with 'saferm undelete'."
