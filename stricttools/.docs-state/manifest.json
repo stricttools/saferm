@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "name": "saferm",
   "slug": "saferm",
   "version": "0.10.2",
@@ -1486,5 +1486,9 @@
   ],
   "posts": [],
   "last_gen": "2026-09-15T20:39:15.390849+00:00",
-  "theme": "minimal"
+  "theme": "minimal",
+  "vocabulary": {
+    "accepted": [],
+    "rejected": []
+  }
 }

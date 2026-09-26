@@ -26,8 +26,8 @@
       "language": "go"
     }
   ],
-  "docs": ".stricttools/docs/",
-  "output": ".stricttools/docs-cache/build/",
+  "docs": "stricttools/docs/",
+  "output": "stricttools/.docs-cache/build/",
   "base_url": "https://smmh.dev/saferm",
   "description": "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag",
   "repo": "https://github.com/smm-h/saferm",
@@ -52,11 +52,11 @@
     }
   ],
   "directives": {
-    "table-exit-codes": ".stricttools/docs/_directives/exit_codes.py"
+    "table-exit-codes": "stricttools/docs/_directives/exit_codes.py"
   },
   "root_files": [
-    ".stricttools/docs/_CLAUDE.md",
-    ".stricttools/docs/_README.md"
+    "stricttools/docs/_CLAUDE.md",
+    "stricttools/docs/_README.md"
   ],
   "gen": {
     "exclude": [
