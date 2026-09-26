@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smm-h/saferm.git"
+    "url": "git+https://github.com/stricttools/saferm.git"
   },
   "homepage": "https://smmh.dev/saferm/",
   "scripts": {
@@ -30,6 +30,6 @@
     "rlsbl"
   ],
   "bugs": {
-    "url": "https://github.com/smm-h/saferm/issues"
+    "url": "https://github.com/stricttools/saferm/issues"
   }
 }

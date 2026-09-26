@@ -20,9 +20,9 @@ classifiers = [
 [project.urls]
 Homepage = "https://smmh.dev/saferm/"
 Documentation = "https://smmh.dev/saferm/"
-Repository = "https://github.com/smm-h/saferm"
-Issues = "https://github.com/smm-h/saferm/issues"
-Changelog = "https://github.com/smm-h/saferm/blob/main/CHANGELOG.md"
+Repository = "https://github.com/stricttools/saferm"
+Issues = "https://github.com/stricttools/saferm/issues"
+Changelog = "https://github.com/stricttools/saferm/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 packages = ["saferm"]
