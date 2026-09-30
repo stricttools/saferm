@@ -430,56 +430,69 @@
     },
     "list": {
       "name": "list",
-      "help": "Show all items currently held in the saferm archive",
+      "help": "Show the items held in the saferm archive, newest first",
       "effect": "read_only",
       "payload_schema": {
-        "items": {
-          "additionalProperties": false,
-          "properties": {
-            "deleted_at": {
-              "type": "string"
-            },
-            "id": {
-              "type": "integer"
-            },
-            "kind": {
-              "enum": [
-                "file",
-                "directory",
-                "symlink"
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "deleted_at": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "integer"
+                },
+                "kind": {
+                  "enum": [
+                    "file",
+                    "directory",
+                    "symlink"
+                  ],
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "archived",
+                    "restored",
+                    "purged"
+                  ],
+                  "type": "string"
+                },
+                "uuid": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "uuid",
+                "path",
+                "size",
+                "kind",
+                "deleted_at",
+                "status"
               ],
-              "type": "string"
+              "type": "object"
             },
-            "path": {
-              "type": "string"
-            },
-            "size": {
-              "type": "integer"
-            },
-            "status": {
-              "enum": [
-                "archived",
-                "restored",
-                "purged"
-              ],
-              "type": "string"
-            },
-            "uuid": {
-              "type": "string"
-            }
+            "type": "array"
           },
-          "required": [
-            "id",
-            "uuid",
-            "path",
-            "size",
-            "kind",
-            "deleted_at",
-            "status"
-          ],
-          "type": "object"
+          "total": {
+            "type": "integer"
+          }
         },
-        "type": "array"
+        "required": [
+          "total",
+          "rows"
+        ],
+        "type": "object"
       },
       "flags": [
         {
@@ -499,6 +512,23 @@
           "presence": "default",
           "default": false,
           "negatable": true
+        },
+        {
+          "name": "since",
+          "help": "List only entries deleted within this duration, in the syntax purge --older-than takes (e.g. 24h, 7d, 2w, 1m); omitted, entries of every age are listed",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
+        },
+        {
+          "name": "limit",
+          "help": "Show only this many of the newest matching entries, and end with a line saying how many are hidden; 0 shows every matching entry",
+          "value_schema": {
+            "type": "integer"
+          },
+          "presence": "default",
+          "default": 50
         }
       ]
     },
@@ -709,6 +739,156 @@
             "type": "string"
           },
           "presence": "required"
+        }
+      ]
+    },
+    "usage": {
+      "name": "usage",
+      "help": "Report how much disk the archive takes, broken down by the age and the original directory of what it holds",
+      "effect": "read_only",
+      "payload_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "archive_dir": {
+            "type": "string"
+          },
+          "archive_disk_bytes": {
+            "type": "integer"
+          },
+          "by_age": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "age": {
+                  "type": "string"
+                },
+                "disk_bytes": {
+                  "type": "integer"
+                },
+                "original_bytes": {
+                  "type": "integer"
+                },
+                "records": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "age",
+                "records",
+                "original_bytes",
+                "disk_bytes"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "by_directory": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "directory": {
+                  "type": "string"
+                },
+                "disk_bytes": {
+                  "type": "integer"
+                },
+                "original_bytes": {
+                  "type": "integer"
+                },
+                "records": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "directory",
+                "records",
+                "original_bytes",
+                "disk_bytes"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "database_disk_bytes": {
+            "type": "integer"
+          },
+          "database_path": {
+            "type": "string"
+          },
+          "missing_entries": {
+            "type": "integer"
+          },
+          "other_directories": {
+            "additionalProperties": false,
+            "properties": {
+              "directories": {
+                "type": "integer"
+              },
+              "disk_bytes": {
+                "type": "integer"
+              },
+              "original_bytes": {
+                "type": "integer"
+              },
+              "records": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "records",
+              "original_bytes",
+              "disk_bytes",
+              "directories"
+            ],
+            "type": "object"
+          },
+          "records": {
+            "type": "integer"
+          },
+          "shared_disk_bytes": {
+            "type": "integer"
+          },
+          "total_disk_bytes": {
+            "type": "integer"
+          },
+          "unreferenced_disk_bytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "archive_dir",
+          "database_path",
+          "archive_disk_bytes",
+          "shared_disk_bytes",
+          "unreferenced_disk_bytes",
+          "database_disk_bytes",
+          "total_disk_bytes",
+          "records",
+          "missing_entries",
+          "by_age",
+          "by_directory",
+          "other_directories"
+        ],
+        "type": "object"
+      },
+      "flags": [
+        {
+          "name": "directory-depth",
+          "help": "How many leading components of each record's original directory name its group in the directory breakdown (1 groups /home/m/Projects/x under /home)",
+          "value_schema": {
+            "type": "integer"
+          },
+          "presence": "default",
+          "default": 3
+        },
+        {
+          "name": "directory-limit",
+          "help": "How many of the directory groups using the most disk to list one by one; the rest are summed on one line, and 0 lists every group",
+          "value_schema": {
+            "type": "integer"
+          },
+          "presence": "default",
+          "default": 20
         }
       ]
     },
