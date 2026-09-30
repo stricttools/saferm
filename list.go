@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stricttools/saferm/internal/db"
 	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/saferm/internal/db"
 )
 
 // listRow is one row of `list`'s machine payload: the table's own columns, plus
@@ -65,6 +65,15 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 	pathGlob := optStr(kwargs["path"], "")
 	includeAll := kwargs["all"].(bool)
 
+	// A malformed pattern is a usage error whatever the archive holds, so it
+	// is refused before anything is opened or read.
+	if pathGlob != "" {
+		if err := validatePathPattern(pathGlob); err != nil {
+			fmt.Fprintf(os.Stderr, "error: invalid glob pattern %q: %s\n", pathGlob, err)
+			return strictcli.Exit(ExitUsage)
+		}
+	}
+
 	dbPath := kwargs["db_path"].(string)
 
 	database, err := openArchiveDBIfPresent(ctx, dbPath)
@@ -81,26 +90,10 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 	}
 	defer database.Close()
 
-	records, err := database.QueryAll(includeAll)
+	records, err := selectListRecords(database, pathGlob, includeAll)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: querying database: %s\n", err)
 		return strictcli.Exit(dbExit(err))
-	}
-
-	// Filter by glob if specified
-	if pathGlob != "" {
-		var filtered []*db.DeletionRecord
-		for _, rec := range records {
-			matched, err := matchArchivePath(pathGlob, rec.OriginalPath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: invalid glob pattern %q: %s\n", pathGlob, err)
-				return strictcli.Exit(ExitUsage)
-			}
-			if matched {
-				filtered = append(filtered, rec)
-			}
-		}
-		records = filtered
 	}
 
 	// The payload is the filtered set, whatever its size: an empty selection is

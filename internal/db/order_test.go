@@ -23,6 +23,10 @@ func multiRowQueries() []namedQuery {
 		{"QueryAll(all)", queryAllSQL(true), nil},
 		{"QueryByPath", queryByPathSQL, []any{"/a/b"}},
 		{"QueryOlderThan", queryOlderThanSQL, []any{now}},
+		{"QueryPathRange(bounded)", queryPathRangeSQL(true), []any{"/a/", "/a0"}},
+		{"QueryPathRange(unbounded)", queryPathRangeSQL(false), []any{""}},
+		{"QueryByIDs(live)", queryByIDsSQL(false), []any{"[1,2,3]"}},
+		{"QueryByIDs(all)", queryByIDsSQL(true), []any{"[1,2,3]"}},
 	}
 }
 

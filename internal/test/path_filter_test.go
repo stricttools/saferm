@@ -86,3 +86,20 @@ func TestList_PathFilter_MalformedPatternIsUsageError(t *testing.T) {
 		t.Fatalf("expected an invalid-glob message, got: %q", stderr)
 	}
 }
+
+// The pattern is checked before anything is read, so a malformed one is a
+// usage error whatever the archive holds -- including nothing at all, where
+// the old filter never ran the matcher and answered "No archived items found."
+func TestList_PathFilter_MalformedPatternIsUsageErrorOnAnEmptyArchive(t *testing.T) {
+	homeDir := testutil.SetupTestEnv(t)
+
+	for _, pattern := range []string{"[", "/home/*/[x"} {
+		_, stderr, code := runSaferm(t, homeDir, "list", "--path", pattern)
+		if code != 2 {
+			t.Fatalf("pattern %q: expected exit 2 on an empty archive, got %d (stderr=%q)", pattern, code, stderr)
+		}
+		if !strings.Contains(stderr, "invalid glob pattern") {
+			t.Fatalf("pattern %q: expected an invalid-glob message, got: %q", pattern, stderr)
+		}
+	}
+}
