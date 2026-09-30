@@ -24,3 +24,4 @@
 {"format_version":1,"id":"18da2a05367888cf8e16c50d09214336915b67d4562df058","commits":["4219e7c0f4c5680ec0343ec4c6bbb8f692eaefe1"],"user_facing":true,"description":"The documentation describes `list`'s default limit of 50 with `--limit` and `--since`, its `{\"total\", \"rows\"}` JSON payload, the new `usage` report and its payload, and how `purge --all` and `--larger-than` select and size what they destroy.","type":"feature"}
 {"format_version":1,"id":"18da2a28e510e24bcb06691d83614c31bade0ee39e30ad59","commits":["d12a845a13474605967036d3fc08a35de1aaa7c4"],"user_facing":false}
 {"format_version":1,"id":"18da2a3680148778aff969fa4ad5476fa9f6df64278d030b","commits":["2ea612d95a25e4ce80714b9eb78e77fb879b0b35"],"user_facing":false}
+{"format_version":1,"id":"18da2a3aea57209e1ca316cf01fa46c0a5132797bb046221","commits":["a14da1eb0bf7a7426d1daa6846cb185367c245a4"],"user_facing":false}
