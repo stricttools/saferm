@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stricttools/saferm/internal/db"
 	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/saferm/internal/db"
 )
 
 func registerPurgeCmd(app *strictcli.App) {
@@ -170,7 +170,12 @@ func handlePurge(ctx *strictcli.Context, kwargs map[string]interface{}) strictcl
 		var table strings.Builder
 		fmt.Fprintf(&table, "%-6s %-40s %-10s %-16s\n", "ID", "Path", "Size", "Age")
 		fmt.Fprintf(&table, "%-6s %-40s %-10s %-16s\n", "------", "----------------------------------------", "----------", "----------------")
-		var totalSize int64
+		// The Size column is what each record captured at delete time; what
+		// the purge frees is what the selected entries occupy on disk, which
+		// for a compressed tree is a fraction of it, and for a file entry
+		// still linked from outside the archive is nothing at all.
+		var freeing int64
+		shared := 0
 		for _, rec := range records {
 			path := rec.OriginalPath
 			if len(path) > 40 {
@@ -178,9 +183,23 @@ func handlePurge(ctx *strictcli.Context, kwargs map[string]interface{}) strictcl
 			}
 			fmt.Fprintf(&table, "%-6d %-40s %-10s %-16s\n",
 				rec.ID, path, humanSize(rec.Size), humanAge(rec.DeletedAt))
-			totalSize += rec.Size
+			use, present, err := entryDiskUse(archiveDir, rec)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: reading the archive entry of [%d] %s: %s\n", rec.ID, rec.OriginalPath, err)
+				return strictcli.Exit(ExitArchive)
+			}
+			if !present {
+				continue
+			}
+			if use.Shared() {
+				shared++
+			}
+			freeing += use.Freed()
 		}
-		fmt.Fprintf(&table, "\nWould purge %d item(s), freeing ~%s\n", len(records), humanSize(totalSize))
+		fmt.Fprintf(&table, "\nWould purge %d item(s), freeing ~%s\n", len(records), humanSize(freeing))
+		if shared > 0 {
+			fmt.Fprintf(&table, "(%d of them also linked from outside the archive: purging frees nothing for those until the other links go)\n", shared)
+		}
 		emit(ctx, "%s", table.String())
 		// Fall through: the loop below mints each archive-file removal on the
 		// effects handle, which records it under --dry-run instead of doing it,
