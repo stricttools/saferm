@@ -12,9 +12,12 @@ main.go          -- app setup, registers commands via strictcli
 delete.go        -- saferm delete: archive files/dirs
 undelete.go      -- saferm undelete: restore by uuid, ID or path
 identifiers.go   -- the one identifier resolver: uuid, then numeric ID, then path
-list.go          -- saferm list: show archived items
+list.go          -- saferm list: show archived items, newest first, --limit/--since/--path
+pathfilter.go    -- list --path: pattern validation, the index range a pattern can match, the two-read selection
 purge.go         -- saferm purge: permanently remove from archive
 info.go          -- saferm info: full metadata for a deletion
+usage.go         -- saferm usage: the archive's disk use, by age and by original directory
+diskuse.go       -- what an archive entry occupies on disk (allocated size, link count); diskstat_*.go read it per platform
 capabilities.go  -- saferm capabilities: the feature names a program negotiates on
 helpers.go       -- say/emit, humanSize, humanAge, parseDuration, the record kinds
 exitcodes.go     -- exit codes 0-8
@@ -22,7 +25,7 @@ version.go       -- version from ldflags or debug.ReadBuildInfo
 
 internal/
   archive/       -- file/dir archival (os.Link, copy+verify when the link is refused, tar+zstd for dirs); Execute writes the entry, RemoveSource removes the original, DiscardBlob takes it back. On the way back: NewRestorePlan, EntryPresent, VerifyEntry, ExtractTree/RollbackExtraction, RestoreSymlink, CopyOut -- primitives only, so undelete.go owns the conflict decision and the step order
-  db/            -- SQLite database (WAL mode, busy_timeout=5000, bounded contention retry, CRUD operations)
+  db/            -- SQLite database (WAL mode, busy_timeout=5000, bounded contention retry, CRUD operations; every multi-row read walks forward, oldest first, and is reversed in memory)
   meta/          -- metadata collection (env vars, git context, PPID + parent cmdline, the resolved trace chain)
   trace/         -- reads the strictcli process trace store: parses STRICTCLI_TRACE_PARENT and walks the ancestry chain
   test/          -- integration tests (builds binary, runs as subprocess)
@@ -49,7 +52,7 @@ go install .                # install locally (picks up changes)
 - **`--quiet`, `--verbose`, `--dry-run` and `--approve-consequential` belong to the framework**, are recognized anywhere on the command line, and have no short forms. The approval flag is deliberately unwieldy so it cannot decay into muscle memory. saferm's own `--verbose` global and `purge --dry-run` flag are gone -- both spellings still work, they are just delivered by the framework now, and `--dry-run` applies to every command rather than only to `purge`.
 - **`--quiet` silences chatter, never answers.** It suppresses the counted summaries (`3 file(s) archived`, `2 item(s) purged`), the `--verbose` per-item progress, `Nothing to purge.` and the `Restored <path>` confirmation, and it dominates `--verbose` when both are passed. It never suppresses the outputs that ARE the command: `list`'s and `info`'s tables, the `--dry-run` previews and the framework's would-do log, `purge`'s listing of what it is destroying, or anything on stderr.
 - **`--dry-run` records instead of acting.** Every mutation `delete`, `undelete` and `purge` perform is minted on `ctx.Effects()`, so a dry run prints a would-do log naming each path it would move, write or destroy, and touches nothing. The database row is the one exception: no member of the effects handle's closed method set can describe a SQLite row change, so those writes sit outside the handle and are skipped in dry mode.
-- **`--json` is the machine surface.** It is the framework's flag, recognized anywhere, and it makes the envelope the ONLY document on stdout: everything saferm would print rides inside it as diagnostics. `delete`, `undelete`, `list` and `info` each declare a payload schema and supply their value in both modes, once the run has reached its answer -- a run that fails before it has one (a `--meta` value that is not `key=value`, an identifier naming no record) carries `payload: null`, because the exit code is the verdict and a payload is never one. `delete`'s aborted batch still names everything it archived above the failure. `purge` deliberately declares no payload at all, because nothing should drive the irreversible operation from a parsed document. `capabilities` is the probe: it names the features this binary ships and reads nothing, so it answers where saferm has never run. A consumer treats a missing verb or a missing feature exactly like saferm being absent, and never compares version strings -- a locally built saferm reports a Go pseudo-version no semver parser accepts. The schemas are published verbatim by `--dump-schema` and by nothing else; the MCP tool descriptors carry each command's `effect`/`consequential` classification beside its argument schema, and no payload schema at all. Full specification: `stricttools/docs/machine-surface.md`.
+- **`--json` is the machine surface.** It is the framework's flag, recognized anywhere, and it makes the envelope the ONLY document on stdout: everything saferm would print is carried inside it as diagnostics. `delete`, `undelete`, `list`, `info`, and `usage` each declare a payload schema and supply their value in both modes, once the run has reached its answer -- a run that fails before it has one (a `--meta` value that is not `key=value`, an identifier naming no record) carries `payload: null`, because the exit code is the verdict and a payload is never one. `delete`'s aborted batch still names everything it archived above the failure. `purge` deliberately declares no payload at all, because nothing should drive the irreversible operation from a parsed document. `capabilities` is the probe: it names the features this binary ships and reads nothing, so it answers where saferm has never run. A consumer treats a missing verb or a missing feature the same as saferm being absent, and never compares version strings -- a locally built saferm reports a Go pseudo-version no semver parser accepts. The schemas are published verbatim by `--dump-schema` and by nothing else; the MCP tool descriptors carry each command's `effect`/`consequential` classification beside its argument schema, and no payload schema at all. Full specification: `stricttools/docs/machine-surface.md`.
 - **Human output goes through the context writers, never straight to stdout.** `say()` is chatter (`--quiet` silences it), `emit()` is the answer itself (`--quiet` never does). Both route through `ctx.Info` in machine mode, which is what keeps the envelope alone on stdout; a bare `fmt.Printf` in a handler would print a table beside the document and break every consumer.
 - **Every flag and every positional argument declares its own presence**, and `--help` renders exactly one presence part per line: `[required]`, `[optional]` or `[default: v]`. On `delete`, `undelete` and `purge` -- all three `mutating` -- **no flag or argument may carry a value default at all**: the framework refuses one at registration, because on a mutating command a value the framework picked is a value the framework writes. Every switch on those three therefore declares `Optional()` and names its fallback in its own help text, and `optBool` / `optStr` / `optStrSlice` in `helpers.go` are the ONLY place absence becomes that fallback. Behaviour on absence is unchanged: `-r` still opts in, `--update-git-index` still defaults to updating, an omitted `--command` still records nothing. Never reach for `Default()` on a mutating command's flag -- it will not register.
 - **`--description` is mandatory** on delete (declared `Required()`). Never make it optional or give it a default.
@@ -63,6 +66,11 @@ go install .                # install locally (picks up changes)
 - **`delete` prints both identifiers per archived path**: `archived: [<id>] <uuid> <path> (<size>)`, one line per record, through `say()` so `--quiet` still silences it. The uuid is the durable handle -- `undelete`, `info` and `purge` all accept it, and `undelete` accepts an original path as well.
 - **Identifier disambiguation is by shape, in one place** (`identifiers.go`): a 36-character hyphenated hex string is a record UUID, an all-digit string is a numeric database ID, anything else is a path. The order is total and independent of what happens to exist, so the same argument always means the same thing. `info` and `purge` refuse a path outright, naming the two forms they take.
 - **`info` states a record's status** in one derived line: `restorable`, `restored at <time>`, `purged at <time>`, or both when a record was restored and later purged. It is read off `restored_at`/`purged_at`, plus one stat of the record's own archive entry where neither column is set: an archival that meets a changed source inside its window commits its row and discards its entry on purpose, so a row that names nothing is a state saferm produces itself, and reporting it as `restorable` would send the caller into an undelete that cannot work. `purge` says the same thing in its own vocabulary -- purging such a row destroys nothing, which it notes on stderr and does not treat as an error.
+- **`list` shows the newest 50 entries by default.** `--limit N` changes the count (declared `Default(50)`, so `--help` shows it) and `--limit 0` shows every matching entry; whenever the limit hides something, the table's last line says `showing N of M; pass --limit N, --since, or --path to see others`. `--since <duration>` keeps entries deleted within that duration, in `purge --older-than`'s syntax (`h`, `d`, `w`, `m`), and combines with `--path` and `--limit`. The `--json` payload is `{"total": M, "rows": [...]}`: the rows shown, and the total the selection matched before the limit.
+- **Every multi-row query reads oldest-first** (`ORDER BY deleted_at ASC, id ASC`) and the result is reversed in memory, so the order shown is newest first with ties broken by the highest id first. A backward b-tree walk defeats read-ahead on a copy-on-write, compressing filesystem and turned a cold `list` into minutes; `TestMultiRowQueriesNeverScanBackward` compiles every multi-row query under `EXPLAIN` and refuses a `Last` or `Prev` opcode, so a new query is added to its list.
+- **`list --path` reads the path index, never every row.** The pattern is validated first, chunk by chunk (a malformed pattern exits 2 whatever the archive holds); `(id, original_path)` is read from the covering `original_path` index over the range the pattern's literal prefix (everything before the first `*`, `?`, `[`, or `\`) allows; `matchArchivePath` decides which match -- it is the only glob matcher, and SQL `GLOB` is never used -- and the matching rows are fetched by id in one JSON-array parameter.
+- **`purge --all` and `--larger-than` select only records still in the archive**, never restored or purged ones. The dry run's `freeing ~<size>` is what the selected entries occupy on disk (allocated blocks), not the sizes recorded at delete time, and it leaves out file entries another name still links, saying how many there are.
+- **`usage` is the read-only disk report**: the archive directory's allocated size (each inode once), the part in entries linked from outside the archive, the part no live record names, the database with its WAL files, and breakdowns of the live records by age and by original directory (`--directory-depth`, default 3; `--directory-limit`, default 20, 0 for all). On Windows the figures are file lengths, because allocated size and link count are not available there.
 - **`-r` required for directories** (like rm).
 - **`-f` skips errors** on nonexistent files (`delete --ignore-missing`). It is `delete`'s flag only; `purge` no longer has one.
 - **Files** archived via `os.Link` into the archive (copy+verify when the filesystem or policy refuses the link, e.g. across devices), and the source is removed only after the database row exists.
@@ -130,11 +138,18 @@ saferm delete --on-error abort --description "Removing deprecated module" --meta
 ### Other commands
 
 ```bash
-# List archived items
+# List archived items (the newest 50; the last line says how many are hidden)
 saferm list
-saferm list --all              # include restored items
+saferm list --limit 0          # every entry
+saferm list --limit 200        # the newest 200
+saferm list --since 2d         # deleted within the last two days (h/d/w/m)
+saferm list --all              # include restored and purged items
 saferm list --path "/home/m/Projects/*"   # glob over the full original path; * spans directories
 saferm list --path "*/build/*"            # anything archived from a build/ directory, at any depth
+
+# How much disk the archive takes, by age and by original directory
+saferm usage
+saferm usage --directory-depth 4 --directory-limit 0
 
 # Show full metadata for a deletion (numeric ID or uuid)
 saferm info 42

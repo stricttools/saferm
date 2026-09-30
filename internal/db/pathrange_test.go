@@ -86,7 +86,7 @@ func TestQueryPathRange(t *testing.T) {
 	if g, w := got("/a/", "/a0", true), `"/a/x" "/a/y/z"`; g != w {
 		t.Errorf("range [/a/, /a0) = %s, want %s", g, w)
 	}
-	// A 0xff byte is a real path byte, and the range must hold it.
+	// A 0xff byte is a valid path byte, and the range must hold it.
 	if g, w := got("/a\xff", "/b", true), `"/a\xff/q" "/a\xff\xff"`; g != w {
 		t.Errorf("range [/a\\xff, /b) = %s, want %s", g, w)
 	}

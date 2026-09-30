@@ -7,7 +7,7 @@ description = "How a program drives saferm: the --json envelope, the payload eac
 
 saferm is built to be driven by programs -- agents, launchers, release tools -- and not only by people reading tables. This page is the specification of that surface: what a machine sends, what it gets back, and what it may rely on.
 
-The surface has three parts. Machine mode (`--json`) turns stdout into one JSON document. Four verbs answer with a structured payload inside that document. The `capabilities` verb says which features this particular saferm ships, so a caller negotiates by name rather than by version number.
+The surface has three parts. Machine mode (`--json`) turns stdout into one JSON document. The consumer verbs answer with a structured payload inside that document. The `capabilities` verb says which features this particular saferm ships, so a caller negotiates by name rather than by version number.
 
 ## Machine mode
 
@@ -42,9 +42,9 @@ The **exit code is still the verdict**. A payload is what a successful run produ
 
 :-: table-exit-codes
 
-## The four consumer verbs
+## The consumer verbs
 
-`delete`, `undelete`, `list` and `info` each declare a payload schema and supply their value in both modes -- the payload is not a machine-mode feature, it is simply invisible outside machine mode. `purge` deliberately declares none: it is the one irreversible operation and the one that asks for consent, and nothing should be driving it from a parsed document.
+`delete`, `undelete`, `list`, `info`, and `usage` each declare a payload schema and supply their value in both modes -- the payload is not a machine-mode feature, it is simply invisible outside machine mode. `purge` deliberately declares none: it is the one irreversible operation and the one that asks for consent, and nothing should be driving it from a parsed document.
 
 What the envelope's table states is the exact rule, and it is not "every run": **a payload is what a run that reached its answer produced.** A run that failed before it had one carries `payload: null` and says why in the exit code and the diagnostics -- a `--meta` value that is not `key=value` never gets past argument handling (exit 2), and an identifier naming no record never resolves one to answer about (exit 3). `delete` is the verb whose answer exists before the run is over, and the rule holds there too: an aborted batch names everything it archived above the failure.
 
@@ -94,22 +94,50 @@ Under `--dry-run` the payload names where the content *would* go; the envelope's
 ### list
 
 ```json
-[
-  {
-    "id": 3,
-    "uuid": "6f1c0e2a-6c9e-4a24-9d1f-2b0f3f5b7c11",
-    "path": "/home/user/project/db/migrations",
-    "size": 14382,
-    "kind": "directory",
-    "deleted_at": "2026-08-13T14:32:01Z",
-    "status": "archived"
-  }
-]
+{
+  "total": 1,
+  "rows": [
+    {
+      "id": 3,
+      "uuid": "6f1c0e2a-6c9e-4a24-9d1f-2b0f3f5b7c11",
+      "path": "/home/user/project/db/migrations",
+      "size": 14382,
+      "kind": "directory",
+      "deleted_at": "2026-08-13T14:32:01Z",
+      "status": "archived"
+    }
+  ]
+}
 ```
 
-The rows, after `--path` filtering and subject to `--all`. Two members the table cannot carry are here: the `uuid` (the table has room only for the numeric id) and `deleted_at` as an absolute RFC3339 timestamp, where the Age column is relative prose. `status` is one of `archived`, `restored`, `purged`.
+`rows` are the rows the table shows, newest first, after `--path`, `--since`, and `--all` have selected them and `--limit` has cut them (the newest 50 unless `--limit` says otherwise; `--limit 0` keeps every one). `total` is how many the selection matched before the limit, so a consumer compares the two to learn whether anything was left out. Two members the table cannot carry are on each row: the `uuid` (the table has room only for the numeric id) and `deleted_at` as an absolute RFC3339 timestamp, where the Age column is relative prose. `status` is one of `archived`, `restored`, `purged`.
 
-An empty archive answers `[]`, never `null`.
+An empty selection answers `{"total": 0, "rows": []}`, never `null`.
+
+### usage
+
+```json
+{
+  "archive_dir": "/home/user/.saferm/archive",
+  "database_path": "/home/user/.saferm/db/saferm.db",
+  "archive_disk_bytes": 1048576,
+  "shared_disk_bytes": 0,
+  "unreferenced_disk_bytes": 4096,
+  "database_disk_bytes": 262144,
+  "total_disk_bytes": 1310720,
+  "records": 12,
+  "missing_entries": 0,
+  "by_age": [
+    {"age": "under 1 day", "records": 2, "original_bytes": 20480, "disk_bytes": 8192}
+  ],
+  "by_directory": [
+    {"directory": "/home/user/project", "records": 12, "original_bytes": 9437184, "disk_bytes": 1044480}
+  ],
+  "other_directories": {"directories": 0, "records": 0, "original_bytes": 0, "disk_bytes": 0}
+}
+```
+
+Every size is in bytes. The `*_disk_bytes` figures are what the files occupy as the filesystem allocates them, not their lengths: `archive_disk_bytes` covers every file in the archive directory, each inode once; `shared_disk_bytes` is the part of it in file entries another name outside the archive still links, which a purge does not free; `unreferenced_disk_bytes` is the part no record still in the archive names. `original_bytes` is what the records captured at delete time. `by_age` always lists all of its buckets, youngest first (`under 1 day`, `1 to 7 days`, `7 to 30 days`, `30 to 90 days`, `90 days or more`); `by_directory` lists the groups using the most disk, as many as `--directory-limit` allows, and `other_directories` sums the rest.
 
 ### info
 
@@ -157,7 +185,7 @@ saferm --json capabilities
 ```
 
 ```json
-{"features": ["git-index-switches", "group-id", "machine-payloads", "on-conflict-modes", "on-error-modes", "restore-destination", "trace-origin", "uuid-handles"]}
+{"features": ["git-index-switches", "group-id", "list-limit", "list-since", "machine-payloads", "on-conflict-modes", "on-error-modes", "restore-destination", "trace-origin", "usage-report", "uuid-handles"]}
 ```
 
 The verb reads nothing -- no database, no archive directory, no configuration -- so it answers on a machine where saferm has never run, and it does not create saferm's state directory in order to answer.
@@ -166,11 +194,14 @@ The verb reads nothing -- no database, no archive directory, no configuration --
 |---------|------------------------|
 | `git-index-switches` | Both halves of the round trip can leave the git index alone: `delete --no-update-git-index` and `undelete --no-update-git-index`. |
 | `group-id` | Every delete invocation stamps one group identifier on every record it writes; it is on `delete`'s and `info`'s payloads. |
-| `machine-payloads` | `delete`, `undelete`, `list` and `info` answer with the payloads specified above. |
+| `machine-payloads` | `delete`, `undelete`, `list`, `info`, and `usage` answer with the payloads specified above. |
 | `on-conflict-modes` | `undelete --on-conflict overwrite\|abort`, required exactly when the destination is occupied. |
 | `on-error-modes` | `delete --on-error abort\|continue`, mandatory with no default. |
 | `restore-destination` | `undelete --destination <path>` restores elsewhere and records where the content went. |
+| `list-limit` | `list` shows the newest entries up to `--limit` (50 unless stated; 0 for all) and its payload is `{"total", "rows"}`. |
+| `list-since` | `list --since <duration>` keeps entries deleted within the duration. |
 | `trace-origin` | Which tool ran a deletion is derived from the process trace store and recorded on the row. |
+| `usage-report` | `usage` reports the archive's disk use, with the payload specified above. |
 | `uuid-handles` | Every record has a uuid that `delete` hands back and `info`, `undelete` and `purge` accept. |
 
 ### The contract
@@ -199,6 +230,7 @@ Every command declares what it does to the world, and the machine surface docume
 | `undelete` | mutating | no |
 | `list` | read_only | no |
 | `info` | read_only | no |
+| `usage` | read_only | no |
 | `capabilities` | read_only | no |
 | `purge` | mutating | yes -- it is the one irreversible operation |
 

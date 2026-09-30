@@ -8,4 +8,12 @@
 // a type distinct from every other database failure, so a caller can tell
 // "another process holds the write lock, try again" from "this archive is
 // broken".
+//
+// Every read of more than one record walks its table or index forward, oldest
+// first, and is reversed in memory before it is returned, so callers receive
+// records newest first with ties broken by the highest id first. A backward
+// walk defeats read-ahead on a copy-on-write, compressing filesystem, where it
+// made reading a large archive take minutes. The original_path index is read
+// on its own by QueryPathRange, so a path filter touches only the rows that
+// match it.
 package db

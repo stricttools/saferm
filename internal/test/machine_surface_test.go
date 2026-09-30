@@ -442,7 +442,7 @@ type listRow struct {
 
 // `list`'s payload is its rows, beside the total. Two things the table
 // cannot carry are on each row: the uuid (the table shows only the numeric id,
-// and the uuid is the handle that survives) and an absolute timestamp (the
+// and the uuid is the durable handle) and an absolute timestamp (the
 // Age column is relative prose nothing can compute with).
 func TestMachineSurface_ListCarriesTheRows(t *testing.T) {
 	homeDir := testutil.SetupTestEnv(t)
