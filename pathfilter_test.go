@@ -153,7 +153,7 @@ func TestListPathSelectionMatchesTheInGoFilter(t *testing.T) {
 		}
 		for _, includeAll := range []bool{false, true} {
 			want := oldListFilter(t, database, pattern, includeAll)
-			records, err := selectListRecords(database, pattern, includeAll)
+			records, err := selectListRecords(database, pattern, includeAll, nil)
 			if err != nil {
 				t.Fatalf("selectListRecords(%q, %v) failed: %v", pattern, includeAll, err)
 			}

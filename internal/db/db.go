@@ -373,6 +373,49 @@ func (d *DB) QueryAll(includeAll bool) ([]*DeletionRecord, error) {
 	return d.queryRecords(queryAllSQL(includeAll))
 }
 
+// queryDeletedFromSQL selects every record, or only the live ones, whose
+// deleted_at text is at least a bound. It reads the deleted_at index forward
+// from the bound, so only the rows at or after it are touched.
+func queryDeletedFromSQL(includeAll bool) string {
+	query := `SELECT ` + recordColumns + ` FROM deletions WHERE deleted_at >= ?`
+	if !includeAll {
+		query += ` AND ` + liveOnly
+	}
+	return query + oldestFirst
+}
+
+// deletedAtSlack widens the text bound QueryDeletedSince hands SQLite.
+// deleted_at is RFC3339 text in whatever zone the deleting process ran in,
+// and text compares by clock reading, not by instant: a record deleted at a
+// given instant in a zone behind UTC reads earlier than the same instant in
+// UTC. No zone is more than 12 hours behind UTC, so a bound a day earlier
+// than the instant, written in UTC, is below every record at or after it.
+const deletedAtSlack = 24 * time.Hour
+
+// QueryDeletedSince returns the records deleted at or after since, newest
+// first. If includeAll is false, restored and purged records are excluded.
+// SQLite narrows by the widened text bound; the exact instant is compared
+// here, on the parsed timestamps.
+func (d *DB) QueryDeletedSince(since time.Time, includeAll bool) ([]*DeletionRecord, error) {
+	bound := since.Add(-deletedAtSlack).UTC().Format(time.RFC3339)
+	records, err := d.queryRecords(queryDeletedFromSQL(includeAll), bound)
+	if err != nil {
+		return nil, err
+	}
+	return DeletedSince(records, since), nil
+}
+
+// DeletedSince keeps, in order, the records deleted at or after since.
+func DeletedSince(records []*DeletionRecord, since time.Time) []*DeletionRecord {
+	kept := records[:0:0]
+	for _, rec := range records {
+		if !rec.DeletedAt.Before(since) {
+			kept = append(kept, rec)
+		}
+	}
+	return kept
+}
+
 // queryRecords runs a multi-row read under the contention retry, scans every
 // row it returns, and hands them back newest first. The query reads
 // oldestFirst, so reversing it gives deleted_at descending with ties broken by

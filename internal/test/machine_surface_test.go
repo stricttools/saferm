@@ -724,6 +724,7 @@ var pinnedFeatures = []string{
 	"git-index-switches",
 	"group-id",
 	"list-limit",
+	"list-since",
 	"machine-payloads",
 	"on-conflict-modes",
 	"on-error-modes",

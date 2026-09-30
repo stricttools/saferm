@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"time"
 
 	"github.com/stricttools/saferm/internal/db"
 )
@@ -94,8 +95,8 @@ func prefixUpperBound(prefix string) (string, bool) {
 
 // selectListRecords returns the records `list` shows, newest first: every
 // record (or every live one), narrowed to those whose original path matches
-// pathGlob when it is not empty. pathGlob must already have passed
-// validatePathPattern.
+// pathGlob when it is not empty, and to those deleted at or after since when
+// since is not nil. pathGlob must already have passed validatePathPattern.
 //
 // A pattern is answered in two reads rather than one read of every row. The
 // first takes (id, original_path) for the pattern's literal-prefix range out
@@ -104,8 +105,11 @@ func prefixUpperBound(prefix string) (string, bool) {
 // id. SQL's GLOB is never used: its `*` stops at nothing either, but its
 // character classes and escapes are not filepath.Match's, and two matchers are
 // two answers.
-func selectListRecords(database *db.DB, pathGlob string, includeAll bool) ([]*db.DeletionRecord, error) {
+func selectListRecords(database *db.DB, pathGlob string, includeAll bool, since *time.Time) ([]*db.DeletionRecord, error) {
 	if pathGlob == "" {
+		if since != nil {
+			return database.QueryDeletedSince(*since, includeAll)
+		}
 		return database.QueryAll(includeAll)
 	}
 	lower, upper, bounded := pathPatternRange(pathGlob)
@@ -123,5 +127,12 @@ func selectListRecords(database *db.DB, pathGlob string, includeAll bool) ([]*db
 			ids = append(ids, c.ID)
 		}
 	}
-	return database.QueryByIDs(ids, includeAll)
+	records, err := database.QueryByIDs(ids, includeAll)
+	if err != nil {
+		return nil, err
+	}
+	if since != nil {
+		records = db.DeletedSince(records, *since)
+	}
+	return records, nil
 }

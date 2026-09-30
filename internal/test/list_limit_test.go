@@ -66,7 +66,7 @@ func TestList_BareListShowsTheNewestFiftyAndSaysWhatItHid(t *testing.T) {
 		t.Errorf("the oldest entry is not among the newest 50:\n%s", stdout)
 	}
 	lines := strings.Split(strings.TrimRight(stdout, "\n"), "\n")
-	footer := "showing 50 of 55; pass --limit N or --path to see others"
+	footer := "showing 50 of 55; pass --limit N, --since, or --path to see others"
 	if lines[len(lines)-1] != footer {
 		t.Errorf("the last line = %q, want %q", lines[len(lines)-1], footer)
 	}

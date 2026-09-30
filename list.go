@@ -78,6 +78,7 @@ func registerListCmd(app *strictcli.App) {
 			// reach it; the declaration changes because it was never a default.
 			strictcli.StringFlag("path", "Filter results to original paths matching the given glob pattern (* spans directory separators, so /home/m/* reaches any depth); omitted, every path is listed", strictcli.Optional()),
 			strictcli.BoolFlag("all", "Include items that have already been restored or purged", strictcli.Default(false)),
+			strictcli.StringFlag("since", "List only entries deleted within this duration, in the syntax purge --older-than takes (e.g. 24h, 7d, 2w, 1m); omitted, entries of every age are listed", strictcli.Optional()),
 			strictcli.IntFlag("limit", "Show only this many of the newest matching entries, and end with a line saying how many are hidden; 0 shows every matching entry", strictcli.Default(listDefaultLimit)),
 		),
 	)
@@ -87,6 +88,19 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 	pathGlob := optStr(kwargs["path"], "")
 	includeAll := kwargs["all"].(bool)
 	limit := kwargs["limit"].(int)
+	// Absence is the two-result assertion, so `--since ""` is a supplied
+	// value that parseDuration refuses rather than a silent "every age".
+	sinceText, hasSince := kwargs["since"].(string)
+	var since *time.Time
+	if hasSince {
+		dur, err := parseDuration(sinceText)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: --since: %s\n", err)
+			return strictcli.Exit(ExitUsage)
+		}
+		from := time.Now().Add(-dur)
+		since = &from
+	}
 
 	if limit < 0 {
 		fmt.Fprintf(os.Stderr, "error: --limit must be 0 (every matching entry) or more, got %d\n", limit)
@@ -118,7 +132,7 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 	}
 	defer database.Close()
 
-	records, err := selectListRecords(database, pathGlob, includeAll)
+	records, err := selectListRecords(database, pathGlob, includeAll, since)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: querying database: %s\n", err)
 		return strictcli.Exit(dbExit(err))
@@ -173,7 +187,7 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 	// A limit that hid something says so, and says how to see the rest, as
 	// the table's last line.
 	if len(records) < total {
-		fmt.Fprintf(&table, "showing %s of %s; pass --limit N or --path to see others\n",
+		fmt.Fprintf(&table, "showing %s of %s; pass --limit N, --since, or --path to see others\n",
 			groupThousands(len(records)), groupThousands(total))
 	}
 	emit(ctx, "%s", table.String())

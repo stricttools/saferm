@@ -35,6 +35,10 @@ const (
 	// consumer knows what the limit left out.
 	featureListLimit = "list-limit"
 
+	// featureListSince: `list --since <duration>` keeps the entries deleted
+	// within the duration, in the syntax purge --older-than takes.
+	featureListSince = "list-since"
+
 	// featureMachinePayloads: `delete`, `undelete`, `list` and `info` each
 	// declare a payload schema and answer under --json with the framework's
 	// envelope carrying it. `purge` deliberately does not.
@@ -75,6 +79,7 @@ var features = []string{
 	featureGitIndexSwitches,
 	featureGroupID,
 	featureListLimit,
+	featureListSince,
 	featureMachinePayloads,
 	featureOnConflictModes,
 	featureOnErrorModes,

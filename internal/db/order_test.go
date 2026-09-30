@@ -27,6 +27,8 @@ func multiRowQueries() []namedQuery {
 		{"QueryPathRange(unbounded)", queryPathRangeSQL(false), []any{""}},
 		{"QueryByIDs(live)", queryByIDsSQL(false), []any{"[1,2,3]"}},
 		{"QueryByIDs(all)", queryByIDsSQL(true), []any{"[1,2,3]"}},
+		{"QueryDeletedSince(live)", queryDeletedFromSQL(false), []any{now}},
+		{"QueryDeletedSince(all)", queryDeletedFromSQL(true), []any{now}},
 	}
 }
 
@@ -121,4 +123,6 @@ func TestNewestFirstTieBreakIsHighestIDFirst(t *testing.T) {
 	check("QueryByPath", recs, err)
 	recs, err = d.QueryOlderThan(same.Add(time.Minute))
 	check("QueryOlderThan", recs, err)
+	recs, err = d.QueryDeletedSince(older.Add(-time.Minute), true)
+	check("QueryDeletedSince", recs, err)
 }

@@ -137,3 +137,46 @@ func TestQueryByIDs(t *testing.T) {
 		t.Errorf("QueryByIDs(nil) = %s, want []", g)
 	}
 }
+
+// deleted_at is text in the deleting process's zone, so an instant written in
+// a zone far behind UTC reads as an earlier clock time. QueryDeletedSince
+// compares instants, whatever zones the rows were written in.
+func TestQueryDeletedSinceComparesInstantsAcrossZones(t *testing.T) {
+	d := openTestDB(t)
+	since := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+	west := time.FixedZone("west", -11*3600)
+	east := time.FixedZone("east", 14*3600)
+	rows := []struct {
+		at   time.Time
+		keep bool
+	}{
+		{since.Add(-time.Second).In(east), false},
+		{since.In(west), true},
+		{since.Add(time.Hour).In(west), true},
+		{since.Add(-time.Hour).In(west), false},
+		{since.Add(30 * time.Minute).In(east), true},
+		{since.Add(-40 * time.Hour), false},
+	}
+	want := map[int64]bool{}
+	for i, r := range rows {
+		id, err := d.Insert(makeRecord(fmt.Sprintf("uuid-since-%d", i), fmt.Sprintf("/since/%d", i), r.at))
+		if err != nil {
+			t.Fatalf("Insert %d failed: %v", i, err)
+		}
+		if r.keep {
+			want[id] = true
+		}
+	}
+	got, err := d.QueryDeletedSince(since, false)
+	if err != nil {
+		t.Fatalf("QueryDeletedSince failed: %v", err)
+	}
+	if len(got) != len(want) {
+		t.Errorf("QueryDeletedSince kept %d records, want %d", len(got), len(want))
+	}
+	for _, rec := range got {
+		if !want[rec.ID] {
+			t.Errorf("record %d deleted at %s is before %s", rec.ID, rec.DeletedAt, since)
+		}
+	}
+}
