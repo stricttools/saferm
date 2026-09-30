@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 // The uuid is saferm's durable handle: the numeric id is an autoincrement

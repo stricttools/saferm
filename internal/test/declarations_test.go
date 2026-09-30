@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 // What every flag and every positional argument says about its own absence is a

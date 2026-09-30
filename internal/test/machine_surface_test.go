@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 // The machine surface is what a program -- an agent, a launcher, a release tool

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/smm-h/saferm/internal/archive"
-	"github.com/smm-h/saferm/internal/db"
-	gitutil "github.com/smm-h/saferm/internal/git"
-	"github.com/smm-h/saferm/internal/meta"
+	"github.com/stricttools/saferm/internal/archive"
+	"github.com/stricttools/saferm/internal/db"
+	gitutil "github.com/stricttools/saferm/internal/git"
+	"github.com/stricttools/saferm/internal/meta"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 

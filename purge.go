@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/smm-h/saferm/internal/db"
+	"github.com/stricttools/saferm/internal/db"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 

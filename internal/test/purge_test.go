@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 // createFileOfSize creates a file at dir/name with exactly the given number of bytes.

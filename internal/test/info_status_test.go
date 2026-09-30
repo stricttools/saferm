@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 // A record and its archived content have separate fates: a restore consumes

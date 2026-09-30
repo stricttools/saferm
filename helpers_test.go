@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smm-h/saferm/internal/db"
+	"github.com/stricttools/saferm/internal/db"
 )
 
 // dbExit is the single seam that turns a database-layer failure into an exit

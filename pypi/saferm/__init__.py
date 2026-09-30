@@ -30,7 +30,7 @@ def _ensure_binary():
     arch = _detect_arch()
 
     url = (
-        f"https://github.com/smm-h/saferm/releases/download/v{__version__}/"
+        f"https://github.com/stricttools/saferm/releases/download/v{__version__}/"
         f"saferm_{__version__}_{os_name}_{arch}.tar.gz"
     )
 
@@ -43,11 +43,11 @@ def _ensure_binary():
         print(f"Failed to download saferm: {e}", file=sys.stderr)
         print(f"URL: {url}", file=sys.stderr)
         print(
-            "Download manually from https://github.com/smm-h/saferm/releases",
+            "Download manually from https://github.com/stricttools/saferm/releases",
             file=sys.stderr,
         )
         print(
-            "Or install via Go: go install github.com/smm-h/saferm@latest",
+            "Or install via Go: go install github.com/stricttools/saferm@v0",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -72,7 +72,7 @@ def _detect_os():
     raise RuntimeError(
         f"Unsupported OS: {s}. "
         "saferm currently supports Linux and macOS only. "
-        "Download manually from https://github.com/smm-h/saferm/releases"
+        "Download manually from https://github.com/stricttools/saferm/releases"
     )
 
 
@@ -84,5 +84,5 @@ def _detect_arch():
         return "arm64"
     raise RuntimeError(
         f"Unsupported architecture: {m}. "
-        "Download manually from https://github.com/smm-h/saferm/releases"
+        "Download manually from https://github.com/stricttools/saferm/releases"
     )

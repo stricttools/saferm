@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/saferm/internal/testutil"
-	"github.com/smm-h/saferm/internal/trace"
+	"github.com/stricttools/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/trace"
 )
 
 var safermBinary string

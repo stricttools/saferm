@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/smm-h/saferm/internal/trace"
+	"github.com/stricttools/saferm/internal/trace"
 )
 
 // Metadata holds contextual information captured at deletion time.

@@ -30,12 +30,12 @@ function main() {
         ? `platform ${osPlatform}`
         : `architecture ${osArch}`;
     console.error(`Unsupported ${label}.`);
-    console.error(`Download manually from https://github.com/smm-h/saferm/releases`);
-    console.error(`Or install via Go: go install github.com/smm-h/saferm@latest`);
+    console.error(`Download manually from https://github.com/stricttools/saferm/releases`);
+    console.error(`Or install via Go: go install github.com/stricttools/saferm@v0`);
     process.exit(1);
   }
 
-  const url = `https://github.com/smm-h/saferm/releases/download/v${version}/saferm_${version}_${os}_${arch}.tar.gz`;
+  const url = `https://github.com/stricttools/saferm/releases/download/v${version}/saferm_${version}_${os}_${arch}.tar.gz`;
 
   const binName = "saferm";
   const destPath = path.join(__dirname, "bin", binName);
@@ -46,8 +46,8 @@ function main() {
     if (err) {
       console.error(`Failed to download saferm: ${err.message}`);
       console.error(`URL: ${url}`);
-      console.error(`Download manually from https://github.com/smm-h/saferm/releases`);
-      console.error(`Or install via Go: go install github.com/smm-h/saferm@latest`);
+      console.error(`Download manually from https://github.com/stricttools/saferm/releases`);
+      console.error(`Or install via Go: go install github.com/stricttools/saferm@v0`);
       process.exit(1);
     }
 

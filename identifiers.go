@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/smm-h/saferm/internal/db"
+	"github.com/stricttools/saferm/internal/db"
 )
 
 // The identifier order, pinned in one place.

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/saferm/internal/db"
-	"github.com/smm-h/saferm/internal/meta"
-	"github.com/smm-h/saferm/internal/testutil"
-	"github.com/smm-h/saferm/internal/trace"
+	"github.com/stricttools/saferm/internal/db"
+	"github.com/stricttools/saferm/internal/meta"
+	"github.com/stricttools/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/trace"
 )
 
 // The origin columns are DERIVED: saferm reads STRICTCLI_TRACE_PARENT and

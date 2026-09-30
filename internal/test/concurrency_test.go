@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 func TestConcurrentDeletes(t *testing.T) {

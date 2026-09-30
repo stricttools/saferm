@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 	_ "modernc.org/sqlite"
 )
 

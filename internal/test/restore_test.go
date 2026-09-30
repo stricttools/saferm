@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 // archivedUUID reads the uuid out of one `delete` line: the command prints

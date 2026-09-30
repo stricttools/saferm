@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/smm-h/saferm/internal/archive"
-	gitutil "github.com/smm-h/saferm/internal/git"
+	"github.com/stricttools/saferm/internal/archive"
+	gitutil "github.com/stricttools/saferm/internal/git"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 

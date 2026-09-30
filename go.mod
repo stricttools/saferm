@@ -1,4 +1,4 @@
-module github.com/smm-h/saferm
+module github.com/stricttools/saferm
 
 go 1.25.7
 

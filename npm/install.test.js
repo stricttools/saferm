@@ -9,18 +9,18 @@ function getDownloadUrl(version, platform, arch) {
   const goarch = ARCH_MAP[arch];
   if (!os) throw new Error(`Unsupported platform: ${platform}`);
   if (!goarch) throw new Error(`Unsupported architecture: ${arch}`);
-  return `https://github.com/smm-h/saferm/releases/download/v${version}/saferm_${version}_${os}_${goarch}.tar.gz`;
+  return `https://github.com/stricttools/saferm/releases/download/v${version}/saferm_${version}_${os}_${goarch}.tar.gz`;
 }
 
 // Test platform mapping
 assert.strictEqual(getDownloadUrl("0.1.1", "linux", "x64"),
-  "https://github.com/smm-h/saferm/releases/download/v0.1.1/saferm_0.1.1_linux_amd64.tar.gz");
+  "https://github.com/stricttools/saferm/releases/download/v0.1.1/saferm_0.1.1_linux_amd64.tar.gz");
 assert.strictEqual(getDownloadUrl("0.1.1", "darwin", "arm64"),
-  "https://github.com/smm-h/saferm/releases/download/v0.1.1/saferm_0.1.1_darwin_arm64.tar.gz");
+  "https://github.com/stricttools/saferm/releases/download/v0.1.1/saferm_0.1.1_darwin_arm64.tar.gz");
 assert.strictEqual(getDownloadUrl("0.1.1", "linux", "arm64"),
-  "https://github.com/smm-h/saferm/releases/download/v0.1.1/saferm_0.1.1_linux_arm64.tar.gz");
+  "https://github.com/stricttools/saferm/releases/download/v0.1.1/saferm_0.1.1_linux_arm64.tar.gz");
 assert.strictEqual(getDownloadUrl("0.1.1", "darwin", "x64"),
-  "https://github.com/smm-h/saferm/releases/download/v0.1.1/saferm_0.1.1_darwin_amd64.tar.gz");
+  "https://github.com/stricttools/saferm/releases/download/v0.1.1/saferm_0.1.1_darwin_amd64.tar.gz");
 
 // Test unsupported platforms
 assert.throws(() => getDownloadUrl("0.1.1", "win32", "x64"), /Unsupported platform/);

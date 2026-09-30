@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smm-h/saferm/internal/testutil"
+	"github.com/stricttools/saferm/internal/testutil"
 )
 
 // What `delete` does when the world changes under it mid-archival.
