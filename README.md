@@ -25,10 +25,16 @@ archived: [3] 6f1c0e2a-6c9e-4a24-9d1f-2b0f3f5b7c11 /home/user/project/old-config
 
 Every archived path is named with both of its identifiers: the numeric database id and the uuid. The uuid is the durable handle -- `undelete`, `info` and `purge` all take it.
 
-See what you've archived:
+See what you've archived -- the newest 50 entries, with a last line saying how many more there are (`--limit 0` shows them all, `--since 2d` only the last two days, and `--path` a glob over the original paths):
 
 ```
 saferm list
+```
+
+See how much disk the archive takes, by age and by the directories things came from:
+
+```
+saferm usage
 ```
 
 Bring it back:
@@ -110,13 +116,13 @@ Either way the identifiers of everything already archived are on stdout before t
 
 ## Driving saferm from a program
 
-`--json` puts saferm in machine mode, where stdout carries exactly one document -- the envelope -- and everything saferm would have printed rides inside it. `delete`, `undelete`, `list` and `info` each answer with a structured payload: the records a delete wrote (both identifiers, path and size, plus the invocation's group id) and every path it could not archive with the reason, where a restore put the content, the rows of a listing, the full record with its status, origin and group. `purge` deliberately has no payload.
+`--json` puts saferm in machine mode, where stdout carries one document and nothing else -- the envelope -- and everything saferm would have printed is carried inside it. `delete`, `undelete`, `list`, `info`, and `usage` each answer with a structured payload: the records a delete wrote (both identifiers, path and size, plus the invocation's group id) and every path it could not archive with the reason, where a restore put the content, the rows of a listing with the total the selection matched, the full record with its status, origin and group, and the archive's disk use in bytes. `purge` deliberately has no payload.
 
 ```
 $ saferm --json capabilities
 {"interface_version":2,"app":"saferm","command":"capabilities","exit_code":0,
- "payload":{"features":["git-index-switches","group-id","machine-payloads","on-conflict-modes",
- "on-error-modes","restore-destination","trace-origin","uuid-handles"]}, ...}
+ "payload":{"features":["git-index-switches","group-id","list-limit","list-since","machine-payloads",
+ "on-conflict-modes","on-error-modes","restore-destination","trace-origin","usage-report","uuid-handles"]}, ...}
 ```
 
 `capabilities` is how a program decides what this saferm can do. It names features, never a version -- a locally built binary reports a Go pseudo-version no semver parser accepts -- and a missing verb or a missing feature means the same thing as saferm not being installed. The verb reads nothing, so it answers on a machine where saferm has never run.

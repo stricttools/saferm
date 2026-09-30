@@ -129,6 +129,11 @@
         },
         {
           "level": 2,
+          "text": "Reading the archive",
+          "anchor": "reading-the-archive"
+        },
+        {
+          "level": 2,
           "text": "Cross-device handling",
           "anchor": "cross-device-handling"
         },
@@ -761,6 +766,11 @@
         },
         {
           "level": 3,
+          "text": "`PathCandidate`",
+          "anchor": "pathcandidate"
+        },
+        {
+          "level": 3,
           "text": "`IsContention`",
           "anchor": "iscontention"
         },
@@ -773,6 +783,11 @@
           "level": 3,
           "text": "`Open`",
           "anchor": "open"
+        },
+        {
+          "level": 3,
+          "text": "`DeletedSince`",
+          "anchor": "deletedsince"
         },
         {
           "level": 3,
@@ -816,6 +831,11 @@
         },
         {
           "level": 3,
+          "text": "`DB.QueryDeletedSince`",
+          "anchor": "dbquerydeletedsince"
+        },
+        {
+          "level": 3,
           "text": "`DB.MarkRestored`",
           "anchor": "dbmarkrestored"
         },
@@ -828,6 +848,16 @@
           "level": 3,
           "text": "`DB.QueryOlderThan`",
           "anchor": "dbqueryolderthan"
+        },
+        {
+          "level": 3,
+          "text": "`DB.QueryPathRange`",
+          "anchor": "dbquerypathrange"
+        },
+        {
+          "level": 3,
+          "text": "`DB.QueryByIDs`",
+          "anchor": "dbquerybyids"
         },
         {
           "level": 2,
@@ -1195,6 +1225,11 @@
         },
         {
           "level": 3,
+          "text": "`PathCandidate`",
+          "anchor": "pathcandidate"
+        },
+        {
+          "level": 3,
           "text": "`IsContention`",
           "anchor": "iscontention"
         },
@@ -1207,6 +1242,11 @@
           "level": 3,
           "text": "`Open`",
           "anchor": "open"
+        },
+        {
+          "level": 3,
+          "text": "`DeletedSince`",
+          "anchor": "deletedsince"
         },
         {
           "level": 3,
@@ -1250,6 +1290,11 @@
         },
         {
           "level": 3,
+          "text": "`DB.QueryDeletedSince`",
+          "anchor": "dbquerydeletedsince"
+        },
+        {
+          "level": 3,
           "text": "`DB.MarkRestored`",
           "anchor": "dbmarkrestored"
         },
@@ -1262,6 +1307,16 @@
           "level": 3,
           "text": "`DB.QueryOlderThan`",
           "anchor": "dbqueryolderthan"
+        },
+        {
+          "level": 3,
+          "text": "`DB.QueryPathRange`",
+          "anchor": "dbquerypathrange"
+        },
+        {
+          "level": 3,
+          "text": "`DB.QueryByIDs`",
+          "anchor": "dbquerybyids"
         }
       ]
     },
@@ -1438,8 +1493,8 @@
         },
         {
           "level": 2,
-          "text": "The four consumer verbs",
-          "anchor": "the-four-consumer-verbs"
+          "text": "The consumer verbs",
+          "anchor": "the-consumer-verbs"
         },
         {
           "level": 3,
@@ -1455,6 +1510,11 @@
           "level": 3,
           "text": "list",
           "anchor": "list"
+        },
+        {
+          "level": 3,
+          "text": "usage",
+          "anchor": "usage"
         },
         {
           "level": 3,
@@ -1485,7 +1545,7 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-09-30T16:14:15.631774+00:00",
+  "last_gen": "2026-09-30T17:40:07.687022+00:00",
   "theme": "minimal",
   "vocabulary": {
     "accepted": [
