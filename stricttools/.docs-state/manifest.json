@@ -1485,10 +1485,15 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-09-15T20:39:15.390849+00:00",
+  "last_gen": "2026-09-30T16:14:15.631774+00:00",
   "theme": "minimal",
   "vocabulary": {
-    "accepted": [],
+    "accepted": [
+      {
+        "word": "saferm",
+        "aliases": []
+      }
+    ],
     "rejected": []
   }
 }

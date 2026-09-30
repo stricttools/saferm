@@ -198,5 +198,5 @@ MIT
 
 ## Links
 
-- GitHub: https://github.com/smm-h/saferm
+- GitHub: https://github.com/stricttools/saferm
 - Docs: https://saferm.smmh.dev

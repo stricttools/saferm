@@ -95,7 +95,7 @@ go install .                # install locally (picks up changes)
 
 ## Tooling
 
-- **rlsbl** for releases (`rlsbl release run --no-allow-dirty --watch --approve-consequential`)
+- **rlsbl** for releases (`rlsbl release run --watch --approve-consequential`)
 - **safegit** for commits (`safegit commit -m "message" -- file1 file2`)
 - **selfdoc** for docs site (saferm.smmh.dev)
 - **strictcli** for CLI framework
