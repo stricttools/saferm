@@ -1,7 +1,8 @@
 +++
 title = "saferm list"
-description = "Show all items currently held in the saferm archive"
+description = "Show the items held in the saferm archive, newest first"
 generated = true
+seeded = true
 nav_group = "CLI Reference"
 nav_order = 5
 +++
