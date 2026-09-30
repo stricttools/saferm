@@ -329,14 +329,57 @@ func (d *DB) QueryByUUID(uuid string) (*DeletionRecord, error) {
 	return rec, nil
 }
 
+// oldestFirst is the only order a multi-row read asks SQLite for. Every such
+// query walks its table or index forward and the caller's newest-first order
+// -- ties broken by the highest id first -- is produced by reversing the result
+// in memory (see queryRecords).
+//
+// A backward walk is not a matter of taste here. SQLite reading a b-tree
+// backward issues one page read at a time in descending file order, and on a
+// copy-on-write, compressing filesystem that defeats read-ahead entirely: on a
+// real archive of about 25,000 records the newest-first read of every row took
+// 36 to 191 seconds cold, and the same rows read oldest-first took 0.5 to 2.5.
+// TestMultiRowQueriesNeverScanBackward holds every multi-row query to this.
+const oldestFirst = ` ORDER BY deleted_at ASC, id ASC`
+
+// liveOnly is the predicate that keeps a record neither restored nor purged.
+const liveOnly = `restored_at IS NULL AND purged_at IS NULL`
+
+// queryByPathSQL selects the live records archived from exactly one path.
+const queryByPathSQL = `SELECT ` + recordColumns + ` FROM deletions WHERE original_path = ? AND ` + liveOnly + oldestFirst
+
+// queryAllSQL selects every record, or only the live ones.
+func queryAllSQL(includeAll bool) string {
+	query := `SELECT ` + recordColumns + ` FROM deletions`
+	if !includeAll {
+		query += ` WHERE ` + liveOnly
+	}
+	return query + oldestFirst
+}
+
+// queryOlderThanSQL selects the live records deleted before a time.
+const queryOlderThanSQL = `SELECT ` + recordColumns + ` FROM deletions WHERE deleted_at < ? AND ` + liveOnly + oldestFirst
+
 // QueryByPath returns all non-restored records matching the given original_path,
-// ordered by deleted_at DESC (newest first).
+// newest first.
 func (d *DB) QueryByPath(path string) ([]*DeletionRecord, error) {
+	return d.queryRecords(queryByPathSQL, path)
+}
+
+// QueryAll returns all records, newest first. If includeAll is false, restored
+// and purged records are excluded.
+func (d *DB) QueryAll(includeAll bool) ([]*DeletionRecord, error) {
+	return d.queryRecords(queryAllSQL(includeAll))
+}
+
+// queryRecords runs a multi-row read under the contention retry, scans every
+// row it returns, and hands them back newest first. The query reads
+// oldestFirst, so reversing it gives deleted_at descending with ties broken by
+// the highest id first.
+func (d *DB) queryRecords(query string, args ...any) ([]*DeletionRecord, error) {
 	var records []*DeletionRecord
 	err := d.retry(func() error {
-		rows, err := d.conn.Query(
-			`SELECT `+recordColumns+`
-			 FROM deletions WHERE original_path = ? AND restored_at IS NULL AND purged_at IS NULL ORDER BY deleted_at DESC`, path)
+		rows, err := d.conn.Query(query, args...)
 		if err != nil {
 			return err
 		}
@@ -347,33 +390,15 @@ func (d *DB) QueryByPath(path string) ([]*DeletionRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	reverseRecords(records)
 	return records, nil
 }
 
-// QueryAll returns all records ordered by deleted_at DESC. If includeAll
-// is false, restored and purged records are excluded.
-func (d *DB) QueryAll(includeAll bool) ([]*DeletionRecord, error) {
-	query := `SELECT ` + recordColumns + `
-		 FROM deletions`
-	if !includeAll {
-		query += " WHERE restored_at IS NULL AND purged_at IS NULL"
+// reverseRecords reverses a slice in place.
+func reverseRecords(records []*DeletionRecord) {
+	for i, j := 0, len(records)-1; i < j; i, j = i+1, j-1 {
+		records[i], records[j] = records[j], records[i]
 	}
-	query += " ORDER BY deleted_at DESC"
-
-	var records []*DeletionRecord
-	err := d.retry(func() error {
-		rows, err := d.conn.Query(query)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		records, err = scanRecords(rows)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	return records, nil
 }
 
 // MarkRestored sets restored_at to now and restored_to to the given path.
@@ -420,25 +445,10 @@ func (d *DB) MarkPurged(id int64) error {
 	})
 }
 
-// QueryOlderThan returns all non-restored, non-purged records deleted before the given time.
+// QueryOlderThan returns all non-restored, non-purged records deleted before
+// the given time, newest first.
 func (d *DB) QueryOlderThan(before time.Time) ([]*DeletionRecord, error) {
-	var records []*DeletionRecord
-	err := d.retry(func() error {
-		rows, err := d.conn.Query(
-			`SELECT `+recordColumns+`
-			 FROM deletions WHERE deleted_at < ? AND restored_at IS NULL AND purged_at IS NULL ORDER BY deleted_at DESC`,
-			before.Format(time.RFC3339))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		records, err = scanRecords(rows)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	return records, nil
+	return d.queryRecords(queryOlderThanSQL, before.Format(time.RFC3339))
 }
 
 // scanner is the common interface between *sql.Row and *sql.Rows.
