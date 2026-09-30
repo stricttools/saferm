@@ -62,9 +62,9 @@ func handlePurge(ctx *strictcli.Context, kwargs map[string]interface{}) strictcl
 	// supplied value that fails in parseDuration rather than a silent no-op.
 	olderThan, hasOlderThan := kwargs["older_than"].(string)
 	largerThan, hasLargerThan := kwargs["larger_than"].(string)
-	// `all` is read by the declared constraint alone: it selects every record,
-	// which is what the final branch below already does for --larger-than on its
-	// own, so the handler has nothing left to ask it.
+	// `all` is read by the declared constraint alone: it selects every record
+	// still in the archive, which is what the final branch below already does
+	// for --larger-than on its own, so the handler has nothing left to ask it.
 	dryRun := ctx.DryRun()
 	targets := optStrSlice(kwargs["targets"])
 	verbose := ctx.Verbose()
@@ -132,8 +132,12 @@ func handlePurge(ctx *strictcli.Context, kwargs map[string]interface{}) strictcl
 			return strictcli.Exit(dbExit(err))
 		}
 	} else {
-		// --all or --larger-than alone (which implies all records)
-		records, err = database.QueryAll(true)
+		// --all, or --larger-than alone, which selects from the same set: every
+		// record still in the archive. A restored record's content is back
+		// where it came from and a purged record's is already destroyed, so
+		// neither has anything left to purge, and counting them made the dry
+		// run promise more than the purge frees.
+		records, err = database.QueryAll(false)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: querying database: %s\n", err)
 			return strictcli.Exit(dbExit(err))

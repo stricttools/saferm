@@ -232,3 +232,56 @@ func TestPurge_DryRun(t *testing.T) {
 		t.Fatalf("dryrun.txt should still be in archive:\n%s", stdout)
 	}
 }
+
+// --all and --larger-than select what is still in the archive. A restored
+// record's content is back where it came from and a purged record's is gone,
+// so neither has anything to destroy -- counting them made the dry run's
+// "Would purge N item(s), freeing ~size" larger than what the purge frees,
+// and the purge itself stamped purged_at onto records it did not purge.
+func TestPurge_AllAndLargerThanSelectOnlyLiveRecords(t *testing.T) {
+	homeDir := testutil.SetupTestEnv(t)
+	workDir := t.TempDir()
+
+	live := createFileOfSize(t, workDir, "live.txt", 2000)
+	restored := createFileOfSize(t, workDir, "restored.txt", 2000)
+	purged := createFileOfSize(t, workDir, "purged.txt", 2000)
+	for _, f := range []string{live, restored, purged} {
+		if _, stderr, code := runSaferm(t, homeDir, "delete", "--on-error", "abort", "--description", "liveness test", f); code != 0 {
+			t.Fatalf("delete %s failed (exit %d): stderr=%q", f, code, stderr)
+		}
+	}
+	stdout, _, _ := runSaferm(t, homeDir, "list")
+	ids := parseAllIDs(t, stdout) // newest first: purged, restored, live
+	if len(ids) != 3 {
+		t.Fatalf("expected 3 archived items, got %d:\n%s", len(ids), stdout)
+	}
+	purgedID, restoredID := ids[0], ids[1]
+	if _, stderr, code := runSaferm(t, homeDir, "undelete", restoredID); code != 0 {
+		t.Fatalf("undelete failed (exit %d): stderr=%q", code, stderr)
+	}
+	if _, stderr, code := runSaferm(t, homeDir, "--approve-consequential", "purge", purgedID); code != 0 {
+		t.Fatalf("purge by id failed (exit %d): stderr=%q", code, stderr)
+	}
+
+	for _, selection := range [][]string{{"--all"}, {"--larger-than", "1KB"}} {
+		args := append([]string{"--dry-run", "purge"}, selection...)
+		stdout, stderr, code := runSaferm(t, homeDir, args...)
+		if code != 0 {
+			t.Fatalf("%v failed (exit %d): stderr=%q", args, code, stderr)
+		}
+		if !strings.Contains(stdout, "Would purge 1 item(s)") {
+			t.Errorf("%v should select only the live record:\n%s", args, stdout)
+		}
+		if strings.Contains(stdout, "restored.txt") || strings.Contains(stdout, "purged.txt") {
+			t.Errorf("%v listed a restored or purged record:\n%s", args, stdout)
+		}
+	}
+
+	if _, stderr, code := runSaferm(t, homeDir, "--approve-consequential", "purge", "--all"); code != 0 {
+		t.Fatalf("purge --all failed (exit %d): stderr=%q", code, stderr)
+	}
+	stdout, _, _ = runSaferm(t, homeDir, "info", restoredID)
+	if strings.Contains(stdout, "purged at") {
+		t.Errorf("purge --all stamped the restored record as purged:\n%s", stdout)
+	}
+}
