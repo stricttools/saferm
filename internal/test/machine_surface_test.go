@@ -718,6 +718,7 @@ var pinnedFeatures = []string{
 	"on-error-modes",
 	"restore-destination",
 	"trace-origin",
+	"usage-report",
 	"uuid-handles",
 }
 

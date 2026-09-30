@@ -34,6 +34,8 @@ import (
 //     can recover the file. That is saferm's whole purpose inverted, which is
 //     precisely what the confirm protocol exists to interrupt.
 //   - info -- read_only. It reads one record and prints its metadata.
+//   - usage -- read_only. It reads the database and stats the archive's
+//     entries to report how much disk the archive takes; it changes nothing.
 //   - capabilities -- read_only. It reads nothing at all: the answer is a
 //     declaration compiled into the binary. It is the probe a program runs
 //     before it has decided to use saferm, so read_only is not merely true of
@@ -53,6 +55,7 @@ var classification = map[string]struct {
 	"list":         {strictcli.EffectReadOnly, false},
 	"purge":        {strictcli.EffectMutating, true},
 	"info":         {strictcli.EffectReadOnly, false},
+	"usage":        {strictcli.EffectReadOnly, false},
 	"capabilities": {strictcli.EffectReadOnly, false},
 	"config.show":  {strictcli.EffectReadOnly, false},
 	"config.set":   {strictcli.EffectMutating, false},
@@ -121,6 +124,8 @@ func TestCommandClassificationIsPinned(t *testing.T) {
 //
 //   - delete, undelete, list, info -- the four consumer verbs. Each declares a
 //     payload schema and supplies its value unconditionally.
+//   - usage -- the disk-use report, whose figures a program reads as bytes
+//     rather than as the table's rounded sizes.
 //   - capabilities -- the probe itself, which is only useful to a machine.
 //   - purge -- deliberately OUTSIDE. It is the one irreversible operation and
 //     the one that asks for consent; nothing should be driving it from a
@@ -134,6 +139,7 @@ var machineSurface = map[string]bool{
 	"undelete":     true,
 	"list":         true,
 	"info":         true,
+	"usage":        true,
 	"capabilities": true,
 	"purge":        false,
 }

@@ -53,6 +53,11 @@ const (
 	// payload carries it. There is no flag that declares an origin.
 	featureTraceOrigin = "trace-origin"
 
+	// featureUsageReport: `usage` reports what the archive and its database
+	// occupy on disk, broken down by age and by original directory, and
+	// answers --json with the figures in bytes.
+	featureUsageReport = "usage-report"
+
 	// featureUUIDHandles: every record has a uuid that `info`, `undelete` and
 	// `purge` all accept, and `delete` hands back. It is the handle that
 	// survives -- the numeric id is one database's counter.
@@ -69,6 +74,7 @@ var features = []string{
 	featureOnErrorModes,
 	featureRestoreDestination,
 	featureTraceOrigin,
+	featureUsageReport,
 	featureUUIDHandles,
 }
 
