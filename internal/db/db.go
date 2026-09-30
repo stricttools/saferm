@@ -336,16 +336,17 @@ func (d *DB) QueryByUUID(uuid string) (*DeletionRecord, error) {
 //
 // A backward walk is not a matter of taste here. SQLite reading a b-tree
 // backward issues one page read at a time in descending file order, and on a
-// copy-on-write, compressing filesystem that defeats read-ahead entirely: on a
-// real archive of about 25,000 records the newest-first read of every row took
-// 36 to 191 seconds cold, and the same rows read oldest-first took 0.5 to 2.5.
+// copy-on-write, compressing filesystem that defeats read-ahead entirely: on an
+// archive of about 25,000 records in daily use, the newest-first read of every
+// row took 36 to 191 seconds cold, and the same rows read oldest-first took 0.5
+// to 2.5.
 // TestMultiRowQueriesNeverScanBackward holds every multi-row query to this.
 const oldestFirst = ` ORDER BY deleted_at ASC, id ASC`
 
 // liveOnly is the predicate that keeps a record neither restored nor purged.
 const liveOnly = `restored_at IS NULL AND purged_at IS NULL`
 
-// queryByPathSQL selects the live records archived from exactly one path.
+// queryByPathSQL selects the live records archived from one given path.
 const queryByPathSQL = `SELECT ` + recordColumns + ` FROM deletions WHERE original_path = ? AND ` + liveOnly + oldestFirst
 
 // queryAllSQL selects every record, or only the live ones.
