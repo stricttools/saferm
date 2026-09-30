@@ -7,7 +7,7 @@ The `rm` replacement that is safe to hand to your AI Agents: deleted files can b
 ## Quick start
 
 ```
-go install github.com/smm-h/saferm@latest
+go install github.com/stricttools/saferm@v0
 ```
 
 Or via Homebrew (macOS/Linux):
@@ -43,7 +43,7 @@ A restore consumes the archived copy -- it is moved back out, not copied -- and 
 
 | Method | Command |
 |--------|---------|
-| Go | `go install github.com/smm-h/saferm@latest` |
+| Go | `go install github.com/stricttools/saferm@v0` |
 | Homebrew | `brew install smm-h/tap/saferm` |
 | npm | `npm install -g saferemove` (not yet published) |
 | PyPI | `pip install saferm` (not yet published) |
