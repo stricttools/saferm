@@ -18,9 +18,10 @@ Version: :-: var key="project.version"
 
 - [delete](../cli-delete/) -- Move files to the saferm archive with metadata tracking
 - [undelete](../cli-undelete/) -- Restore a previously archived file back to its original path
-- [list](../cli-list/) -- Show all items currently held in the saferm archive
+- [list](../cli-list/) -- Show the items held in the saferm archive, newest first
 - [purge](../cli-purge/) -- Permanently destroy archived items and free disk space
 - [info](../cli-info/) -- Display full metadata and context for an archived deletion
+- [usage](../cli-usage/) -- Report how much disk the archive takes, broken down by the age and the original directory of what it holds
 - [capabilities](../cli-capabilities/) -- Name the features this saferm ships, for a program deciding how to drive it
 
 ## Command Groups

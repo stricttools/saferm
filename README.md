@@ -60,9 +60,10 @@ A restore consumes the archived copy -- it is moved back out, not copied -- and 
 | --- | --- |
 | `delete` | Move files to the saferm archive with metadata tracking |
 | `undelete` | Restore a previously archived file back to its original path |
-| `list` | Show all items currently held in the saferm archive |
+| `list` | Show the items held in the saferm archive, newest first |
 | `purge` | Permanently destroy archived items and free disk space |
 | `info` | Display full metadata and context for an archived deletion |
+| `usage` | Report how much disk the archive takes, broken down by the age and the original directory of what it holds |
 | `capabilities` | Name the features this saferm ships, for a program deciding how to drive it |
 | **config** | Manage persistent configuration values stored in the config file |
 | `config path` | Print the absolute path to this application's config file and nothing else, so the value can be piped straight into another command. The path is $XDG_CONFIG_HOME/<app>/config.<toml\|json> (falling back to ~/.config), or the explicit override the application was built with. Printing it does not create the file, and reports the same path whether or not one exists yet. |

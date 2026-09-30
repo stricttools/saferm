@@ -431,6 +431,23 @@
       ]
     },
     {
+      "path": "cli-usage.md",
+      "title": "saferm usage",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "saferm usage",
+          "anchor": "saferm-usage"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
+    },
+    {
       "path": "configuration.md",
       "title": "Configuration",
       "type": "doc",
@@ -1545,7 +1562,7 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-09-30T17:40:07.687022+00:00",
+  "last_gen": "2026-09-30T17:42:15.194495+00:00",
   "theme": "minimal",
   "vocabulary": {
     "accepted": [

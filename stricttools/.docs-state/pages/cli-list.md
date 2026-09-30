@@ -2,7 +2,6 @@
 title = "saferm list"
 description = "Show all items currently held in the saferm archive"
 generated = true
-seeded = true
 nav_group = "CLI Reference"
 nav_order = 5
 +++
@@ -10,7 +9,7 @@ nav_order = 5
 
 # saferm list
 
-Show all items currently held in the saferm archive
+Show the items held in the saferm archive, newest first
 
 **Effect:** read_only
 
@@ -20,3 +19,5 @@ Show all items currently held in the saferm archive
 | --- | --- | --- | --- | --- | --- |
 | `--path` |  | str | optional |  | Filter results to original paths matching the given glob pattern (* spans directory separators, so /home/m/* reaches any depth); omitted, every path is listed |
 | `--all`, `--no-all` |  | bool | default: `false` |  | Include items that have already been restored or purged |
+| `--since` |  | str | optional |  | List only entries deleted within this duration, in the syntax purge --older-than takes (e.g. 24h, 7d, 2w, 1m); omitted, entries of every age are listed |
+| `--limit` |  | int | default: `50` |  | Show only this many of the newest matching entries, and end with a line saying how many are hidden; 0 shows every matching entry |

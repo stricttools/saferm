@@ -37,8 +37,7 @@
   "en/cli-list.md": {
     "content": "1849ce8c756ab5a89733db938fd590a1708e1759a4eb65ab0a35fe3a6ef30241",
     "description": "60da6545668a30e966eeb6478528ee666f25693f0b2374a0fe46d538ef74ca91",
-    "schema_hash": "73d7155f86cdf669ecd7fdcc15b82c78a0443115477e58cb134562588cd2dd12",
-    "seed_hash": "60da6545668a30e966eeb6478528ee666f25693f0b2374a0fe46d538ef74ca91"
+    "schema_hash": "73d7155f86cdf669ecd7fdcc15b82c78a0443115477e58cb134562588cd2dd12"
   },
   "en/cli-purge.md": {
     "content": "fbf8d246728ae6985209491d9d1d23c75c56bcf40cdfc372ff875d3184a05d94",
@@ -51,6 +50,11 @@
     "description": "b0d895e2d997bde39c0c997cdf1bc93c66c9ec51c9f1a5675e945c9d6321a743",
     "schema_hash": "5f08ba854e90df21a5e381bd664f3658351985be4277060b5553a910770e6854",
     "seed_hash": "b0d895e2d997bde39c0c997cdf1bc93c66c9ec51c9f1a5675e945c9d6321a743"
+  },
+  "en/cli-usage.md": {
+    "content": "b8a871ffb7bdd26a7a5668ba69cce7bee5182a4908410ede3cb56d1149b65523",
+    "description": "8c211cb81c3097fddf0a65a4e375e41f5fba17f2b988628447675e3d5f2d7710",
+    "seed_hash": "8c211cb81c3097fddf0a65a4e375e41f5fba17f2b988628447675e3d5f2d7710"
   },
   "en/configuration.md": {
     "content": "7551c22aa2d64152ef21ba1c1f63629b3e2ac7673146ad84b633089b6256c09c",
