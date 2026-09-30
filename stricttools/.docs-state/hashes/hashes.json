@@ -24,7 +24,7 @@
     "seed_hash": "d712af2ed54a4760be181c1967362be6f16487481d31405274d02b894a5fc94e"
   },
   "en/cli-index.md": {
-    "content": "cac2b5c671ba02debc9a72a6b4cfe548a73672ac03bcf1f079598a9851141ce0",
+    "content": "2968654c741e179695ef7138f9eccce15720b0d3f5439600b6491fe8cf2eac62",
     "description": "c29f159b2c8376a6e6fbfef8446ca34d26087187b10d269922892f3ae9f835fe",
     "seed_hash": "c29f159b2c8376a6e6fbfef8446ca34d26087187b10d269922892f3ae9f835fe"
   },
@@ -54,6 +54,7 @@
   "en/cli-usage.md": {
     "content": "b8a871ffb7bdd26a7a5668ba69cce7bee5182a4908410ede3cb56d1149b65523",
     "description": "8c211cb81c3097fddf0a65a4e375e41f5fba17f2b988628447675e3d5f2d7710",
+    "schema_hash": "9e19bf999782adbc2cb240836412d4245cac6d3b5d20c2643a7281a9729df934",
     "seed_hash": "8c211cb81c3097fddf0a65a4e375e41f5fba17f2b988628447675e3d5f2d7710"
   },
   "en/configuration.md": {
