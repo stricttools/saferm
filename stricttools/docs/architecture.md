@@ -1,6 +1,6 @@
 +++
 title = "Architecture"
-description = "How saferm's internal components fit together: hard-linked archive storage, SQLite metadata, the checks guarding removal of the original, the restore path with its conflict mode, verification before an overwrite and partial-extraction rollback, and the origin and ancestry derived from the process trace store."
+description = "How saferm's internal components fit together: hard-linked archive storage, SQLite metadata, the checks guarding removal of the original, the restore path with its conflict mode, verification before an overwrite and partial-extraction rollback, and the origin and ancestry derived from the process trace store, and how the archive is read: oldest-first queries, the index-driven path filter, and the disk-use report."
 +++
 
 # Architecture
