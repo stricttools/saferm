@@ -30,6 +30,11 @@ const (
 	// `delete`'s payload and on `info`'s.
 	featureGroupID = "group-id"
 
+	// featureListLimit: `list` shows the newest entries up to --limit (50
+	// unless stated, 0 for all), and its payload is {"total", "rows"}, so a
+	// consumer knows what the limit left out.
+	featureListLimit = "list-limit"
+
 	// featureMachinePayloads: `delete`, `undelete`, `list` and `info` each
 	// declare a payload schema and answer under --json with the framework's
 	// envelope carrying it. `purge` deliberately does not.
@@ -69,6 +74,7 @@ const (
 var features = []string{
 	featureGitIndexSwitches,
 	featureGroupID,
+	featureListLimit,
 	featureMachinePayloads,
 	featureOnConflictModes,
 	featureOnErrorModes,

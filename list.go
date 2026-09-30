@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,29 +26,49 @@ type listRow struct {
 	Status    string `json:"status"`
 }
 
-// listPayloadSchema declares `list`'s payload: the rows, as an array. An empty
-// archive answers with an empty array rather than null, so a consumer never has
-// to special-case "nothing has ever been deleted here".
-var listPayloadSchema = map[string]interface{}{
-	"type": "array",
-	"items": map[string]interface{}{
-		"type": "object",
-		"properties": map[string]interface{}{
-			"id":         map[string]interface{}{"type": "integer"},
-			"uuid":       map[string]interface{}{"type": "string"},
-			"path":       map[string]interface{}{"type": "string"},
-			"size":       map[string]interface{}{"type": "integer"},
-			"kind":       map[string]interface{}{"type": "string", "enum": []interface{}{kindFile, kindDirectory, kindSymlink}},
-			"deleted_at": map[string]interface{}{"type": "string"},
-			"status":     map[string]interface{}{"type": "string", "enum": []interface{}{statusArchived, statusRestored, statusPurged}},
-		},
-		"required":             []interface{}{"id", "uuid", "path", "size", "kind", "deleted_at", "status"},
-		"additionalProperties": false,
+// listRowSchema declares one row of `list`'s payload.
+var listRowSchema = map[string]interface{}{
+	"type": "object",
+	"properties": map[string]interface{}{
+		"id":         map[string]interface{}{"type": "integer"},
+		"uuid":       map[string]interface{}{"type": "string"},
+		"path":       map[string]interface{}{"type": "string"},
+		"size":       map[string]interface{}{"type": "integer"},
+		"kind":       map[string]interface{}{"type": "string", "enum": []interface{}{kindFile, kindDirectory, kindSymlink}},
+		"deleted_at": map[string]interface{}{"type": "string"},
+		"status":     map[string]interface{}{"type": "string", "enum": []interface{}{statusArchived, statusRestored, statusPurged}},
 	},
+	"required":             []interface{}{"id", "uuid", "path", "size", "kind", "deleted_at", "status"},
+	"additionalProperties": false,
 }
 
+// listPayload is `list`'s machine payload: the rows shown, newest first, and
+// the total the selection matched before --limit cut it, so a machine knows
+// what the limit left out.
+type listPayload struct {
+	Total int       `json:"total"`
+	Rows  []listRow `json:"rows"`
+}
+
+// listPayloadSchema declares `list`'s payload. An empty selection answers with
+// an empty rows array rather than null, so a consumer never has to
+// special-case "nothing has ever been deleted here".
+var listPayloadSchema = map[string]interface{}{
+	"type": "object",
+	"properties": map[string]interface{}{
+		"total": map[string]interface{}{"type": "integer"},
+		"rows":  map[string]interface{}{"type": "array", "items": listRowSchema},
+	},
+	"required":             []interface{}{"total", "rows"},
+	"additionalProperties": false,
+}
+
+// listDefaultLimit is how many entries a bare `list` shows. It is declared on
+// the flag, so --help states it.
+const listDefaultLimit = 50
+
 func registerListCmd(app *strictcli.App) {
-	app.Command("list", "Show all items currently held in the saferm archive", handleList,
+	app.Command("list", "Show the items held in the saferm archive, newest first", handleList,
 		strictcli.WithEffect(strictcli.EffectReadOnly),
 		strictcli.PayloadSchema(listPayloadSchema),
 		strictcli.WithFlags(
@@ -57,6 +78,7 @@ func registerListCmd(app *strictcli.App) {
 			// reach it; the declaration changes because it was never a default.
 			strictcli.StringFlag("path", "Filter results to original paths matching the given glob pattern (* spans directory separators, so /home/m/* reaches any depth); omitted, every path is listed", strictcli.Optional()),
 			strictcli.BoolFlag("all", "Include items that have already been restored or purged", strictcli.Default(false)),
+			strictcli.IntFlag("limit", "Show only this many of the newest matching entries, and end with a line saying how many are hidden; 0 shows every matching entry", strictcli.Default(listDefaultLimit)),
 		),
 	)
 }
@@ -64,6 +86,12 @@ func registerListCmd(app *strictcli.App) {
 func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli.Outcome {
 	pathGlob := optStr(kwargs["path"], "")
 	includeAll := kwargs["all"].(bool)
+	limit := kwargs["limit"].(int)
+
+	if limit < 0 {
+		fmt.Fprintf(os.Stderr, "error: --limit must be 0 (every matching entry) or more, got %d\n", limit)
+		return strictcli.Exit(ExitUsage)
+	}
 
 	// A malformed pattern is a usage error whatever the archive holds, so it
 	// is refused before anything is opened or read.
@@ -84,7 +112,7 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 	// No database file means nothing has ever been deleted on this machine,
 	// which is a list of length zero, not a failure.
 	if database == nil {
-		ctx.Payload([]listRow{})
+		ctx.Payload(listPayload{Total: 0, Rows: []listRow{}})
 		emit(ctx, "No archived items found.\n")
 		return strictcli.Exit(ExitSuccess)
 	}
@@ -96,9 +124,15 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 		return strictcli.Exit(dbExit(err))
 	}
 
-	// The payload is the filtered set, whatever its size: an empty selection is
-	// an empty array, never null.
-	ctx.Payload(listRows(records))
+	// The limit keeps the newest entries: records are newest first.
+	total := len(records)
+	if limit > 0 && total > limit {
+		records = records[:limit]
+	}
+
+	// The payload is the set the table shows, whatever its size: an empty
+	// selection is an empty array, never null.
+	ctx.Payload(listPayload{Total: total, Rows: listRows(records)})
 
 	if len(records) == 0 {
 		emit(ctx, "No archived items found.\n")
@@ -136,9 +170,25 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 			listStatus(rec),
 		)
 	}
+	// A limit that hid something says so, and says how to see the rest, as
+	// the table's last line.
+	if len(records) < total {
+		fmt.Fprintf(&table, "showing %s of %s; pass --limit N or --path to see others\n",
+			groupThousands(len(records)), groupThousands(total))
+	}
 	emit(ctx, "%s", table.String())
 
 	return strictcli.Exit(ExitSuccess)
+}
+
+// groupThousands writes a count with a comma between each group of three
+// digits.
+func groupThousands(n int) string {
+	s := strconv.Itoa(n)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
 }
 
 // The three lifecycle words `list` shows in its Status column, spelled once and

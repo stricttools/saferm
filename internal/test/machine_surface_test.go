@@ -440,10 +440,10 @@ type listRow struct {
 	Status    string `json:"status"`
 }
 
-// `list`'s payload is its rows. Two things the table cannot carry are on it:
-// the uuid (the table shows only the numeric id, and the uuid is the handle
-// that survives) and an absolute timestamp (the Age column is relative prose
-// nothing can compute with).
+// `list`'s payload is its rows, beside the total. Two things the table
+// cannot carry are on each row: the uuid (the table shows only the numeric id,
+// and the uuid is the handle that survives) and an absolute timestamp (the
+// Age column is relative prose nothing can compute with).
 func TestMachineSurface_ListCarriesTheRows(t *testing.T) {
 	homeDir := testutil.SetupTestEnv(t)
 	workDir := t.TempDir()
@@ -462,10 +462,11 @@ func TestMachineSurface_ListCarriesTheRows(t *testing.T) {
 		t.Fatalf("list failed (exit %d): %q", code, stderr)
 	}
 
-	var rows []listRow
-	if err := json.Unmarshal(env.Payload, &rows); err != nil {
+	var doc listDoc
+	if err := json.Unmarshal(env.Payload, &doc); err != nil {
 		t.Fatalf("list's payload does not parse (%v): %s", err, env.Payload)
 	}
+	rows := doc.Rows
 	if len(rows) != 2 {
 		t.Fatalf("two records were archived, so the payload holds two rows, got: %s", env.Payload)
 	}
@@ -498,20 +499,16 @@ func TestMachineSurface_ListCarriesTheRows(t *testing.T) {
 	if _, stderr, code := runSaferm(t, homeDir, "undelete", fileRow.UUID); code != 0 {
 		t.Fatalf("undelete failed (exit %d): %q", code, stderr)
 	}
-	env, _, _ = runSafermJSON(t, homeDir, "list", "--all")
-	if err := json.Unmarshal(env.Payload, &rows); err != nil {
-		t.Fatalf("list's payload does not parse (%v): %s", err, env.Payload)
-	}
-	for _, row := range rows {
+	for _, row := range listPayload(t, homeDir, "--all").Rows {
 		if row.Path == file && row.Status != "restored" {
 			t.Errorf("the restored row's status = %q, want restored", row.Status)
 		}
 	}
 }
 
-// An empty archive answers with an empty list, not with null: a consumer
-// iterating the payload must not have to special-case "nothing has ever been
-// deleted on this machine".
+// An empty archive answers with an empty list of rows and a total of zero,
+// not with null: a consumer iterating the rows must not have to special-case
+// "nothing has ever been deleted on this machine".
 func TestMachineSurface_ListOfNothingIsAnEmptyArray(t *testing.T) {
 	homeDir := testutil.SetupTestEnv(t)
 
@@ -519,8 +516,8 @@ func TestMachineSurface_ListOfNothingIsAnEmptyArray(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("list failed (exit %d): %q", code, stderr)
 	}
-	if strings.TrimSpace(string(env.Payload)) != "[]" {
-		t.Errorf("an empty archive's payload must be [], got: %s", env.Payload)
+	if !isEmptyListPayload(env.Payload) {
+		t.Errorf("an empty archive's payload must be no rows and a total of 0, got: %s", env.Payload)
 	}
 
 	// The same answer where the filter matches nothing.
@@ -528,9 +525,22 @@ func TestMachineSurface_ListOfNothingIsAnEmptyArray(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("filtered list failed (exit %d)", code)
 	}
-	if strings.TrimSpace(string(env.Payload)) != "[]" {
-		t.Errorf("a filter matching nothing must answer [], got: %s", env.Payload)
+	if !isEmptyListPayload(env.Payload) {
+		t.Errorf("a filter matching nothing must answer no rows and a total of 0, got: %s", env.Payload)
 	}
+}
+
+// isEmptyListPayload reports whether a list payload is a total of 0 beside an
+// empty rows array -- present and empty, not null.
+func isEmptyListPayload(payload json.RawMessage) bool {
+	var doc struct {
+		Total *int             `json:"total"`
+		Rows  *json.RawMessage `json:"rows"`
+	}
+	if err := json.Unmarshal(payload, &doc); err != nil || doc.Total == nil || doc.Rows == nil {
+		return false
+	}
+	return *doc.Total == 0 && strings.TrimSpace(string(*doc.Rows)) == "[]"
 }
 
 // infoPayload is the record `info` prints, as a machine reads it. The nullable
@@ -713,6 +723,7 @@ func TestMachineSurface_InfoCarriesTheOrigin(t *testing.T) {
 var pinnedFeatures = []string{
 	"git-index-switches",
 	"group-id",
+	"list-limit",
 	"machine-payloads",
 	"on-conflict-modes",
 	"on-error-modes",
