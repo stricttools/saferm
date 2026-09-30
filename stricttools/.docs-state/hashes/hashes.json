@@ -2,7 +2,8 @@
   "_hash_version": 3,
   "en/architecture.md": {
     "content": "88ce31e3895f265a8fa80cc349936f977b864a2faa14d70ee814db729e04bc67",
-    "description": "19d2349cedee152ecbf61b43cfcec8a135a3a47969a0af3bb9e83e62e6272f7a"
+    "description": "19d2349cedee152ecbf61b43cfcec8a135a3a47969a0af3bb9e83e62e6272f7a",
+    "source_docstring": "21b0c5cb4d5ccf029bcfd57a3f6e25a7a690686d9d1ba4b40f03fb496ff26cfd"
   },
   "en/cli-capabilities.md": {
     "content": "f4d545ea9ec1f9136195c66d39c75c4b915832ccf2cc58d6cebb8ef60e83d390",
@@ -36,6 +37,7 @@
   "en/cli-list.md": {
     "content": "deb38d8084683340ae6b3581685745948658961d3b6f83640a5bbdb76a99e989",
     "description": "a56c2cc75eed63d151a260572d16eaa947160f61730dc684a3d5f0e12247e537",
+    "schema_hash": "aeec1ddd6876ae14e46e46b5c575d5f4ab9ee1d0fbd0e9769ec1a23b17bb9dd3",
     "seed_hash": "a56c2cc75eed63d151a260572d16eaa947160f61730dc684a3d5f0e12247e537"
   },
   "en/cli-purge.md": {
@@ -77,7 +79,8 @@
   },
   "en/internal-db.md": {
     "content": "0b0c5239589137033af1bf4eacfba79f9ddafe74151faa3744d9aa0fdc0e7b77",
-    "description": "6f50cecbc6db10eb77b77ea8a1dfb7712f72f6e3b1e2ac4f2b0b5f75495efdd2"
+    "description": "6f50cecbc6db10eb77b77ea8a1dfb7712f72f6e3b1e2ac4f2b0b5f75495efdd2",
+    "source_docstring": "0bd34c9c74ccdf862ea99245ddb2f7887161552699cecca4d898641bcff2cf90"
   },
   "en/internal-git.md": {
     "content": "fad2f346948f7b2af67ec4be45a22815942a58c022cacd98f5a5a937728b896f",
