@@ -133,7 +133,7 @@ func TestMigration_RepairsRecordsOlderVersionsWroteAsFiles(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("list: exit %d: %s", code, stderr)
 	}
-	for _, want := range []string{"[fifo]", "[sym]"} {
+	for _, want := range []string{"[fifo]", "[symlink]"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("list does not mark %s:\n%s", want, stdout)
 		}

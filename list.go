@@ -243,23 +243,15 @@ func listRows(records []*db.DeletionRecord) []listRow {
 }
 
 // nodeTypeMarker is the marker the table appends to a path to say what type of
-// file was archived there; a regular file carries none.
+// file was archived there: the node type word itself, the word the payloads'
+// node_type member carries. A regular file carries none.
 func nodeTypeMarker(k archive.NodeType) string {
 	switch k {
 	case archive.NodeTypeFile:
 		return ""
-	case archive.NodeTypeDirectory:
-		return " [dir]"
-	case archive.NodeTypeSymlink:
-		return " [sym]"
-	case archive.NodeTypeFIFO:
-		return " [fifo]"
-	case archive.NodeTypeSocket:
-		return " [socket]"
-	case archive.NodeTypeCharacterDevice:
-		return " [character-device]"
-	case archive.NodeTypeBlockDevice:
-		return " [block-device]"
+	case archive.NodeTypeDirectory, archive.NodeTypeSymlink, archive.NodeTypeFIFO, archive.NodeTypeSocket,
+		archive.NodeTypeCharacterDevice, archive.NodeTypeBlockDevice:
+		return " [" + string(k) + "]"
 	}
 	panic(fmt.Sprintf("nodeTypeMarker: unknown node type %q", string(k)))
 }

@@ -253,7 +253,7 @@ func TestDelete_Symlink_Relative(t *testing.T) {
 	}
 }
 
-// TestList_Symlink_TypeIndicator tests that symlinks show [sym] in list output
+// TestList_Symlink_TypeIndicator tests that symlinks show [symlink] in list output
 // and regular files do not have any type indicator.
 func TestList_Symlink_TypeIndicator(t *testing.T) {
 	homeDir := testutil.SetupTestEnv(t)
@@ -305,13 +305,13 @@ func TestList_Symlink_TypeIndicator(t *testing.T) {
 		t.Fatalf("regular file entry not found in list output:\n%s", stdout)
 	}
 
-	// Symlink line should contain [sym].
-	if !strings.Contains(symlinkLine, "[sym]") {
-		t.Errorf("symlink list entry should contain [sym], got: %q", symlinkLine)
+	// Symlink line should contain [symlink].
+	if !strings.Contains(symlinkLine, "[symlink]") {
+		t.Errorf("symlink list entry should contain [symlink], got: %q", symlinkLine)
 	}
 
-	// Regular file line should NOT contain [sym] or [dir].
-	if strings.Contains(regularLine, "[sym]") || strings.Contains(regularLine, "[dir]") {
+	// Regular file line should NOT contain [symlink] or [directory].
+	if strings.Contains(regularLine, "[symlink]") || strings.Contains(regularLine, "[directory]") {
 		t.Errorf("regular file list entry should not contain type indicator, got: %q", regularLine)
 	}
 }

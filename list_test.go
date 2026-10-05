@@ -14,14 +14,15 @@ func TestGroupThousands(t *testing.T) {
 	}
 }
 
-// A special file's marker in the list table is its node type word, the word the
-// payloads' node_type member carries.
-func TestNodeTypeMarker_NamesASpecialFileByItsNodeType(t *testing.T) {
+// Every marker in the list table is its node type word, the word the payloads'
+// node_type member carries; a regular file carries none.
+func TestNodeTypeMarker_IsTheNodeTypeWord(t *testing.T) {
 	for _, nodeType := range archive.NodeTypes() {
-		if !archive.IsSpecialFileType(nodeType) {
-			continue
+		want := " [" + string(nodeType) + "]"
+		if nodeType == archive.NodeTypeFile {
+			want = ""
 		}
-		if got, want := nodeTypeMarker(nodeType), " ["+string(nodeType)+"]"; got != want {
+		if got := nodeTypeMarker(nodeType); got != want {
 			t.Errorf("nodeTypeMarker(%q) = %q, want %q", nodeType, got, want)
 		}
 	}
