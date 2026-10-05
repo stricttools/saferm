@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
 	"github.com/stricttools/saferm/internal/meta"
 	"github.com/smm-h/strictcli/go/strictcli"
@@ -24,6 +26,7 @@ const (
 	statusRestorable         = "restorable"
 	statusRestoredThenPurged = "restored-then-purged"
 	statusEntryMissing       = "entry-missing"
+	statusEntryCorrupt       = "entry-corrupt"
 )
 
 // infoPayload is `info`'s machine payload: the record, including the three
@@ -76,7 +79,7 @@ var infoPayloadSchema = map[string]interface{}{
 		"symlink_target": map[string]interface{}{"type": []interface{}{"string", "null"}},
 		"deleted_at":     map[string]interface{}{"type": "string"},
 		"status": map[string]interface{}{"type": "string", "enum": []interface{}{
-			statusRestorable, statusRestored, statusPurged, statusRestoredThenPurged, statusEntryMissing,
+			statusRestorable, statusRestored, statusPurged, statusRestoredThenPurged, statusEntryMissing, statusEntryCorrupt,
 		}},
 		"description":    map[string]interface{}{"type": "string"},
 		"command":        map[string]interface{}{"type": "string"},
@@ -123,6 +126,12 @@ func registerInfoCmd(app *strictcli.App) {
 // nothing is a state saferm produces itself, not a corruption. Answering
 // "restorable" for it is the one answer that sends a caller into an undelete
 // that cannot work.
+//
+// The same holds for an entry that is there but is not the shape the record's
+// kind says it is -- a FIFO or a symlink standing where a file record expects a
+// regular file, the leftovers of saferm versions that did not recognize those
+// types, or a special file's descriptor of another kind. undelete refuses it,
+// so "restorable" would be a lie.
 func recordStatus(rec *db.DeletionRecord, archiveDir string) string {
 	var parts []string
 	if rec.RestoredAt != nil {
@@ -132,8 +141,12 @@ func recordStatus(rec *db.DeletionRecord, archiveDir string) string {
 		parts = append(parts, "purged at "+rec.PurgedAt.Format(time.RFC3339))
 	}
 	if len(parts) == 0 {
-		if archiveEntryIsGone(archiveDir, rec) {
+		missing, corrupt := entryState(archiveDir, rec)
+		if missing {
 			return "the archived copy is gone though nothing restored or purged it -- this row names nothing; purge it to clear it"
+		}
+		if corrupt != nil {
+			return fmt.Sprintf("the archived copy is not what this record says it is, so undelete refuses it: %s", corrupt)
 		}
 		return "restorable"
 	}
@@ -153,10 +166,34 @@ func recordMachineStatus(rec *db.DeletionRecord, archiveDir string) string {
 		return statusRestored
 	case rec.PurgedAt != nil:
 		return statusPurged
-	case archiveEntryIsGone(archiveDir, rec):
+	}
+	missing, corrupt := entryState(archiveDir, rec)
+	switch {
+	case missing:
 		return statusEntryMissing
+	case corrupt != nil:
+		return statusEntryCorrupt
 	}
 	return statusRestorable
+}
+
+// entryState reads a live record's archive entry the way undelete's first
+// check does: missing when nothing is there, and corrupt -- with the reason --
+// when what is there is not the shape the record's kind says it is. Any other
+// failure to read it is neither, as [archiveEntryIsGone] explains.
+func entryState(archiveDir string, rec *db.DeletionRecord) (missing bool, corrupt error) {
+	if archiveEntryIsGone(archiveDir, rec) {
+		return true, nil
+	}
+	target := ""
+	if rec.SymlinkTarget != nil {
+		target = *rec.SymlinkTarget
+	}
+	err := archive.EntryPresent(archive.NewRestorePlan(rec.UUID, archiveDir, rec.OriginalPath, rec.Kind, target))
+	if errors.Is(err, archive.ErrEntryCorrupt) {
+		return false, err
+	}
+	return false, nil
 }
 
 // formatTime renders a nullable timestamp column the way the payload carries
