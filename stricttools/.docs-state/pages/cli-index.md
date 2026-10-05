@@ -23,6 +23,7 @@ Version: :-: var key="project.version"
 - [info](../cli-info/) -- Display full metadata and context for an archived deletion
 - [usage](../cli-usage/) -- Report how much disk the archive takes, broken down by the age and the original directory of what it holds
 - [capabilities](../cli-capabilities/) -- Name the features this saferm ships, for a program deciding how to drive it
+- [reclassify-records](../cli-reclassify-records/) -- Give every live record whose archive entry contradicts its kind the kind the entry really holds. saferm versions that did not recognize symlinks or special files recorded them as files; undelete refuses those records and info reports them as entry-corrupt until this runs. Preview it with --dry-run first
 
 ## Command Groups
 

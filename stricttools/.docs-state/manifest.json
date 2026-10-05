@@ -404,6 +404,18 @@
       ]
     },
     {
+      "path": "cli-reclassify-records.md",
+      "title": "saferm reclassify-records",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "saferm reclassify-records",
+          "anchor": "saferm-reclassify-records"
+        }
+      ]
+    },
+    {
       "path": "cli-undelete.md",
       "title": "saferm undelete",
       "type": "doc",
@@ -1847,7 +1859,7 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-10-05T15:49:51.210642+00:00",
+  "last_gen": "2026-10-05T15:50:10.886481+00:00",
   "theme": "minimal",
   "vocabulary": {
     "accepted": [

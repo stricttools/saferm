@@ -46,6 +46,11 @@
     "schema_hash": "caa4d2b701e8ed48228dcab5e0d1841b39a12722aaf11cb26ef7aaf280144839",
     "seed_hash": "757fc7170adbbb4229f13cbf3484585ecc3454baafb1d40aecdbffe10119b14f"
   },
+  "en/cli-reclassify-records.md": {
+    "content": "04ecf1eaff667ac07f516fce69fd8520d204e95121f41c7694adbd3e71fe27f9",
+    "description": "1ca3a5a0cbfae3acc1341acc14bb0f23e94d47705c3f5627d77eba01ea412e9f",
+    "seed_hash": "1ca3a5a0cbfae3acc1341acc14bb0f23e94d47705c3f5627d77eba01ea412e9f"
+  },
   "en/cli-undelete.md": {
     "content": "4ab069617e6cbf327a9afc55b1b9371552e5eaf288a75b3e34a5bc749c934c47",
     "description": "b0d895e2d997bde39c0c997cdf1bc93c66c9ec51c9f1a5675e945c9d6321a743",
