@@ -58,7 +58,8 @@
       "interactive": false,
       "config_fields": [],
       "grants": [],
-      "forwarding": null
+      "forwarding": null,
+      "requires": []
     },
     "group": {
       "commands": {},
@@ -82,7 +83,7 @@
   },
   "project_id": "github.com/stricttools/saferm",
   "name": "saferm",
-  "version": "0.10.3-0.20261005154951-ff23b854e511",
+  "version": "0.10.3-0.20261005203145-0f0a083f8b92",
   "help": "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag",
   "env_prefix": "SAFERM",
   "config": true,
@@ -338,7 +339,7 @@
           "id": {
             "type": "integer"
           },
-          "kind": {
+          "node_type": {
             "enum": [
               "file",
               "directory",
@@ -368,7 +369,7 @@
           "uuid",
           "original_path",
           "restored_to",
-          "kind",
+          "node_type",
           "overwrote"
         ],
         "type": "object"
@@ -449,7 +450,7 @@
                 "id": {
                   "type": "integer"
                 },
-                "kind": {
+                "node_type": {
                   "enum": [
                     "file",
                     "directory",
@@ -484,7 +485,7 @@
                 "uuid",
                 "path",
                 "size",
-                "kind",
+                "node_type",
                 "deleted_at",
                 "status"
               ],
@@ -650,7 +651,7 @@
           "id": {
             "type": "integer"
           },
-          "kind": {
+          "node_type": {
             "enum": [
               "file",
               "directory",
@@ -729,7 +730,7 @@
           "original_name",
           "size",
           "hash",
-          "kind",
+          "node_type",
           "symlink_target",
           "deleted_at",
           "status",
@@ -921,69 +922,6 @@
         },
         "required": [
           "features"
-        ],
-        "type": "object"
-      }
-    },
-    "reclassify-records": {
-      "name": "reclassify-records",
-      "help": "Give every live record whose archive entry contradicts its kind the kind the entry really holds. saferm versions that did not recognize symlinks or special files recorded them as files; undelete refuses those records and info reports them as entry-corrupt until this runs. Preview it with --dry-run first",
-      "effect": "mutating",
-      "payload_schema": {
-        "additionalProperties": false,
-        "properties": {
-          "reclassified": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "from": {
-                  "enum": [
-                    "file",
-                    "directory",
-                    "symlink",
-                    "fifo",
-                    "socket",
-                    "character-device",
-                    "block-device"
-                  ],
-                  "type": "string"
-                },
-                "id": {
-                  "type": "integer"
-                },
-                "path": {
-                  "type": "string"
-                },
-                "to": {
-                  "enum": [
-                    "file",
-                    "directory",
-                    "symlink",
-                    "fifo",
-                    "socket",
-                    "character-device",
-                    "block-device"
-                  ],
-                  "type": "string"
-                },
-                "uuid": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "uuid",
-                "path",
-                "from",
-                "to"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "reclassified"
         ],
         "type": "object"
       }
