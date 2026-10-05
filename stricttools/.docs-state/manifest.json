@@ -578,6 +578,26 @@
         },
         {
           "level": 3,
+          "text": "`KindFIFO`",
+          "anchor": "kindfifo"
+        },
+        {
+          "level": 3,
+          "text": "`KindSocket`",
+          "anchor": "kindsocket"
+        },
+        {
+          "level": 3,
+          "text": "`KindCharacterDevice`",
+          "anchor": "kindcharacterdevice"
+        },
+        {
+          "level": 3,
+          "text": "`KindBlockDevice`",
+          "anchor": "kindblockdevice"
+        },
+        {
+          "level": 3,
           "text": "`ErrFileNotFound`",
           "anchor": "errfilenotfound"
         },
@@ -590,6 +610,11 @@
           "level": 3,
           "text": "`ErrHashMismatch`",
           "anchor": "errhashmismatch"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNotRegularFile`",
+          "anchor": "errnotregularfile"
         },
         {
           "level": 3,
@@ -648,13 +673,38 @@
         },
         {
           "level": 3,
-          "text": "`ArchiveResult`",
-          "anchor": "archiveresult"
+          "text": "`ErrUnsupportedTarMember`",
+          "anchor": "errunsupportedtarmember"
         },
         {
           "level": 3,
-          "text": "`Kind`",
-          "anchor": "kind"
+          "text": "`ErrUnknownKind`",
+          "anchor": "errunknownkind"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNodeDescriptorMalformed`",
+          "anchor": "errnodedescriptormalformed"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNodeNeedsPrivilege`",
+          "anchor": "errnodeneedsprivilege"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNodeUnsupported`",
+          "anchor": "errnodeunsupported"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNotReclassifiable`",
+          "anchor": "errnotreclassifiable"
+        },
+        {
+          "level": 3,
+          "text": "`ArchiveResult`",
+          "anchor": "archiveresult"
         },
         {
           "level": 3,
@@ -665,6 +715,26 @@
           "level": 3,
           "text": "`RestorePlan`",
           "anchor": "restoreplan"
+        },
+        {
+          "level": 3,
+          "text": "`Kind`",
+          "anchor": "kind"
+        },
+        {
+          "level": 3,
+          "text": "`UnsupportedFileError`",
+          "anchor": "unsupportedfileerror"
+        },
+        {
+          "level": 3,
+          "text": "`Node`",
+          "anchor": "node"
+        },
+        {
+          "level": 3,
+          "text": "`Reclassification`",
+          "anchor": "reclassification"
         },
         {
           "level": 3,
@@ -708,6 +778,11 @@
         },
         {
           "level": 3,
+          "text": "`RestoreNode`",
+          "anchor": "restorenode"
+        },
+        {
+          "level": 3,
           "text": "`RestoreSymlink`",
           "anchor": "restoresymlink"
         },
@@ -737,14 +812,69 @@
           "anchor": "newuuid"
         },
         {
-          "level": 2,
-          "text": "`internal/db`",
-          "anchor": "internaldb"
+          "level": 3,
+          "text": "`Kinds`",
+          "anchor": "kinds"
         },
         {
           "level": 3,
-          "text": "`SchemaSQL`",
-          "anchor": "schemasql"
+          "text": "`ParseKind`",
+          "anchor": "parsekind"
+        },
+        {
+          "level": 3,
+          "text": "`EntryPath`",
+          "anchor": "entrypath"
+        },
+        {
+          "level": 3,
+          "text": "`Classify`",
+          "anchor": "classify"
+        },
+        {
+          "level": 3,
+          "text": "`IsNodeKind`",
+          "anchor": "isnodekind"
+        },
+        {
+          "level": 3,
+          "text": "`EncodeNode`",
+          "anchor": "encodenode"
+        },
+        {
+          "level": 3,
+          "text": "`DecodeNode`",
+          "anchor": "decodenode"
+        },
+        {
+          "level": 3,
+          "text": "`PlanReclassification`",
+          "anchor": "planreclassification"
+        },
+        {
+          "level": 3,
+          "text": "`Plan.NodeDescriptor`",
+          "anchor": "plannodedescriptor"
+        },
+        {
+          "level": 3,
+          "text": "`UnsupportedFileError.Error`",
+          "anchor": "unsupportedfileerrorerror"
+        },
+        {
+          "level": 3,
+          "text": "`Reclassification.WriteEntry`",
+          "anchor": "reclassificationwriteentry"
+        },
+        {
+          "level": 3,
+          "text": "`Reclassification.DiscardEntry`",
+          "anchor": "reclassificationdiscardentry"
+        },
+        {
+          "level": 2,
+          "text": "`internal/db`",
+          "anchor": "internaldb"
         },
         {
           "level": 3,
@@ -760,6 +890,11 @@
           "level": 3,
           "text": "`ErrOriginEmpty`",
           "anchor": "erroriginempty"
+        },
+        {
+          "level": 3,
+          "text": "`ErrRecordChanged`",
+          "anchor": "errrecordchanged"
         },
         {
           "level": 3,
@@ -860,6 +995,11 @@
           "level": 3,
           "text": "`DB.MarkPurged`",
           "anchor": "dbmarkpurged"
+        },
+        {
+          "level": 3,
+          "text": "`DB.Reclassify`",
+          "anchor": "dbreclassify"
         },
         {
           "level": 3,
@@ -1025,6 +1165,26 @@
         },
         {
           "level": 3,
+          "text": "`KindFIFO`",
+          "anchor": "kindfifo"
+        },
+        {
+          "level": 3,
+          "text": "`KindSocket`",
+          "anchor": "kindsocket"
+        },
+        {
+          "level": 3,
+          "text": "`KindCharacterDevice`",
+          "anchor": "kindcharacterdevice"
+        },
+        {
+          "level": 3,
+          "text": "`KindBlockDevice`",
+          "anchor": "kindblockdevice"
+        },
+        {
+          "level": 3,
           "text": "`ErrFileNotFound`",
           "anchor": "errfilenotfound"
         },
@@ -1037,6 +1197,11 @@
           "level": 3,
           "text": "`ErrHashMismatch`",
           "anchor": "errhashmismatch"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNotRegularFile`",
+          "anchor": "errnotregularfile"
         },
         {
           "level": 3,
@@ -1095,13 +1260,38 @@
         },
         {
           "level": 3,
-          "text": "`ArchiveResult`",
-          "anchor": "archiveresult"
+          "text": "`ErrUnsupportedTarMember`",
+          "anchor": "errunsupportedtarmember"
         },
         {
           "level": 3,
-          "text": "`Kind`",
-          "anchor": "kind"
+          "text": "`ErrUnknownKind`",
+          "anchor": "errunknownkind"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNodeDescriptorMalformed`",
+          "anchor": "errnodedescriptormalformed"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNodeNeedsPrivilege`",
+          "anchor": "errnodeneedsprivilege"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNodeUnsupported`",
+          "anchor": "errnodeunsupported"
+        },
+        {
+          "level": 3,
+          "text": "`ErrNotReclassifiable`",
+          "anchor": "errnotreclassifiable"
+        },
+        {
+          "level": 3,
+          "text": "`ArchiveResult`",
+          "anchor": "archiveresult"
         },
         {
           "level": 3,
@@ -1112,6 +1302,26 @@
           "level": 3,
           "text": "`RestorePlan`",
           "anchor": "restoreplan"
+        },
+        {
+          "level": 3,
+          "text": "`Kind`",
+          "anchor": "kind"
+        },
+        {
+          "level": 3,
+          "text": "`UnsupportedFileError`",
+          "anchor": "unsupportedfileerror"
+        },
+        {
+          "level": 3,
+          "text": "`Node`",
+          "anchor": "node"
+        },
+        {
+          "level": 3,
+          "text": "`Reclassification`",
+          "anchor": "reclassification"
         },
         {
           "level": 3,
@@ -1155,6 +1365,11 @@
         },
         {
           "level": 3,
+          "text": "`RestoreNode`",
+          "anchor": "restorenode"
+        },
+        {
+          "level": 3,
           "text": "`RestoreSymlink`",
           "anchor": "restoresymlink"
         },
@@ -1182,6 +1397,66 @@
           "level": 3,
           "text": "`NewUUID`",
           "anchor": "newuuid"
+        },
+        {
+          "level": 3,
+          "text": "`Kinds`",
+          "anchor": "kinds"
+        },
+        {
+          "level": 3,
+          "text": "`ParseKind`",
+          "anchor": "parsekind"
+        },
+        {
+          "level": 3,
+          "text": "`EntryPath`",
+          "anchor": "entrypath"
+        },
+        {
+          "level": 3,
+          "text": "`Classify`",
+          "anchor": "classify"
+        },
+        {
+          "level": 3,
+          "text": "`IsNodeKind`",
+          "anchor": "isnodekind"
+        },
+        {
+          "level": 3,
+          "text": "`EncodeNode`",
+          "anchor": "encodenode"
+        },
+        {
+          "level": 3,
+          "text": "`DecodeNode`",
+          "anchor": "decodenode"
+        },
+        {
+          "level": 3,
+          "text": "`PlanReclassification`",
+          "anchor": "planreclassification"
+        },
+        {
+          "level": 3,
+          "text": "`Plan.NodeDescriptor`",
+          "anchor": "plannodedescriptor"
+        },
+        {
+          "level": 3,
+          "text": "`UnsupportedFileError.Error`",
+          "anchor": "unsupportedfileerrorerror"
+        },
+        {
+          "level": 3,
+          "text": "`Reclassification.WriteEntry`",
+          "anchor": "reclassificationwriteentry"
+        },
+        {
+          "level": 3,
+          "text": "`Reclassification.DiscardEntry`",
+          "anchor": "reclassificationdiscardentry"
         }
       ]
     },
@@ -1202,11 +1477,6 @@
         },
         {
           "level": 3,
-          "text": "`SchemaSQL`",
-          "anchor": "schemasql"
-        },
-        {
-          "level": 3,
           "text": "`ErrNotFound`",
           "anchor": "errnotfound"
         },
@@ -1219,6 +1489,11 @@
           "level": 3,
           "text": "`ErrOriginEmpty`",
           "anchor": "erroriginempty"
+        },
+        {
+          "level": 3,
+          "text": "`ErrRecordChanged`",
+          "anchor": "errrecordchanged"
         },
         {
           "level": 3,
@@ -1319,6 +1594,11 @@
           "level": 3,
           "text": "`DB.MarkPurged`",
           "anchor": "dbmarkpurged"
+        },
+        {
+          "level": 3,
+          "text": "`DB.Reclassify`",
+          "anchor": "dbreclassify"
         },
         {
           "level": 3,
@@ -1539,6 +1819,11 @@
           "anchor": "info"
         },
         {
+          "level": 3,
+          "text": "reclassify-records",
+          "anchor": "reclassify-records"
+        },
+        {
           "level": 2,
           "text": "capabilities",
           "anchor": "capabilities"
@@ -1562,7 +1847,7 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-09-30T17:42:15.194495+00:00",
+  "last_gen": "2026-10-05T15:49:51.210642+00:00",
   "theme": "minimal",
   "vocabulary": {
     "accepted": [
