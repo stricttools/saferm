@@ -4,14 +4,16 @@ format_version = 1
 #   prerelease: advance an existing pre-release (0.6.0-beta.0 -> -beta.1)
 bump = "minor"
 # Short description of this release (required)
-description = "A fast list on large archives, with a default limit of 50, --limit, --since, and an index-driven --path; a new usage report of the archive's disk use; purge selecting and sizing only what it destroys; and FIFOs, sockets, and devices archived and restored instead of read, under one kind column in the archive database."
+description = "A fast list on large archives, with a default limit of 50, --limit, --since, and an index-driven --path; a new usage report of the archive's disk use; purge selecting and sizing only what it destroys; and FIFOs, sockets, and devices archived and restored instead of read, under one node_type column in the archive database, whose migration repairs the symlinks and FIFOs older versions recorded as files; and the --json envelope at interface_version 3, with the help document printed by saferm help --json."
 # Optional context explaining why these changes were made
 context = """
 On an archive of about 25,000 records, a cold `saferm list` took 36 to 191 seconds because every multi-row query read the database backward, which defeats read-ahead on a copy-on-write, compressing filesystem. Queries now read oldest-first and reverse in memory, `--path` reads only the matching part of the path index, and a bare `list` shows the newest 50 entries with a line saying how many are hidden.
 
 `list --json` now answers with an object, `{"total", "rows"}`, instead of a bare array, so a consumer reads the rows from `rows`. The Go module path is now `github.com/stricttools/saferm`.
 
-Deleting a FIFO used to block until a writer appeared and then record the drained bytes as a file no undelete could restore, deleting a socket failed, and a directory restore silently left out the FIFOs and devices inside the tree. saferm now classifies every path explicitly: special files are kept as `.node` descriptors and recreated on restore, and any other type is refused by name. The database records what each deletion archived in one `kind` column (schema version 4, a table rebuild that older saferm binaries cannot read), and `reclassify-records` repairs the records older versions wrote as files over symlink and FIFO entries.
+Deleting a FIFO used to block until a writer appeared and then record the drained bytes as a file no undelete could restore, deleting a socket failed, and a directory restore silently left out the FIFOs and devices inside the tree. saferm now classifies every path explicitly: special files are kept as `.node` descriptors and recreated on restore, and any other type is refused by name. The database records what each deletion archived in one `node_type` column (schema version 4, a table rebuild that older saferm binaries cannot read), and the migration that adds it repairs the records older versions wrote as files over symlink and FIFO entries, refusing as a whole and changing nothing when it meets a contradiction it cannot repair.
+
+strictcli 0.38.0 moves the `--json` envelope to `interface_version` 3 and replaces `--dump-schema` with `saferm help --json`, so a consumer pinning version 2 must be updated.
 """
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). With patch/minor/major it ENTERS the
