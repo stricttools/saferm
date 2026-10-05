@@ -36,10 +36,6 @@ import (
 //   - info -- read_only. It reads one record and prints its metadata.
 //   - usage -- read_only. It reads the database and stats the archive's
 //     entries to report how much disk the archive takes; it changes nothing.
-//   - reclassify-records -- mutating, NOT consequential. It rewrites archive
-//     entries that older saferm versions left in a form their records
-//     contradict, and updates those records; the content each entry holds is
-//     carried into the new entry before the old one goes, so nothing is lost.
 //   - capabilities -- read_only. It reads nothing at all: the answer is a
 //     declaration compiled into the binary. It is the probe a program runs
 //     before it has decided to use saferm, so read_only is not merely true of
@@ -54,19 +50,18 @@ var classification = map[string]struct {
 	effect        string
 	consequential bool
 }{
-	"delete":             {strictcli.EffectMutating, false},
-	"undelete":           {strictcli.EffectMutating, false},
-	"list":               {strictcli.EffectReadOnly, false},
-	"purge":              {strictcli.EffectMutating, true},
-	"info":               {strictcli.EffectReadOnly, false},
-	"usage":              {strictcli.EffectReadOnly, false},
-	"capabilities":       {strictcli.EffectReadOnly, false},
-	"reclassify-records": {strictcli.EffectMutating, false},
-	"config.show":        {strictcli.EffectReadOnly, false},
-	"config.set":         {strictcli.EffectMutating, false},
-	"config.path":        {strictcli.EffectReadOnly, false},
-	"config.edit":        {strictcli.EffectMutating, false},
-	"config.init":        {strictcli.EffectMutating, false},
+	"delete":       {strictcli.EffectMutating, false},
+	"undelete":     {strictcli.EffectMutating, false},
+	"list":         {strictcli.EffectReadOnly, false},
+	"purge":        {strictcli.EffectMutating, true},
+	"info":         {strictcli.EffectReadOnly, false},
+	"usage":        {strictcli.EffectReadOnly, false},
+	"capabilities": {strictcli.EffectReadOnly, false},
+	"config.show":  {strictcli.EffectReadOnly, false},
+	"config.set":   {strictcli.EffectMutating, false},
+	"config.path":  {strictcli.EffectReadOnly, false},
+	"config.edit":  {strictcli.EffectMutating, false},
+	"config.init":  {strictcli.EffectMutating, false},
 }
 
 // collectCommands flattens the app's command tree into dotted paths.
@@ -132,8 +127,6 @@ func TestCommandClassificationIsPinned(t *testing.T) {
 //   - usage -- the disk-use report, whose figures a program reads as bytes
 //     rather than as the table's rounded sizes.
 //   - capabilities -- the probe itself, which is only useful to a machine.
-//   - reclassify-records -- the records it changed (or under --dry-run would),
-//     so a program can tell which of its handles now name another node type.
 //   - purge -- deliberately OUTSIDE. It is the one irreversible operation and
 //     the one that asks for consent; nothing should be driving it from a
 //     parsed document, and a payload would be the first step toward something
@@ -142,14 +135,13 @@ func TestCommandClassificationIsPinned(t *testing.T) {
 // The framework's own `config` commands are not saferm's to declare and are
 // excluded from this pin -- `config show` carries a framework-owned schema.
 var machineSurface = map[string]bool{
-	"delete":             true,
-	"undelete":           true,
-	"list":               true,
-	"info":               true,
-	"usage":              true,
-	"capabilities":       true,
-	"reclassify-records": true,
-	"purge":              false,
+	"delete":       true,
+	"undelete":     true,
+	"list":         true,
+	"info":         true,
+	"usage":        true,
+	"capabilities": true,
+	"purge":        false,
 }
 
 func TestMachineSurfaceMembershipIsPinned(t *testing.T) {

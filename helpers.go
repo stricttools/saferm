@@ -126,11 +126,11 @@ func retryNotifier(ctx *strictcli.Context) db.RetryNotifier {
 // archive yet" and must say so in its own vocabulary. Outside dry mode the
 // directories have just been created, so the open always proceeds and the
 // result is never nil.
-func openArchiveDB(ctx *strictcli.Context, dbPath string) (*db.DB, error) {
+func openArchiveDB(ctx *strictcli.Context, dbPath string, archiveDir string) (*db.DB, error) {
 	if ctx.DryRun() {
-		return openArchiveDBIfPresent(ctx, dbPath)
+		return openArchiveDBIfPresent(ctx, dbPath, archiveDir)
 	}
-	return db.Open(dbPath, retryNotifier(ctx))
+	return db.Open(dbPath, archiveDir, retryNotifier(ctx))
 }
 
 // openArchiveDBIfPresent opens the archive database, or returns nil when there
@@ -142,11 +142,11 @@ func openArchiveDB(ctx *strictcli.Context, dbPath string) (*db.DB, error) {
 // anything they meet a file that is not there. SQLite's "unable to open
 // database file" is the wrong answer to "what have I deleted?"; the caller
 // turns the nil into "nothing", which is the true one.
-func openArchiveDBIfPresent(ctx *strictcli.Context, dbPath string) (*db.DB, error) {
+func openArchiveDBIfPresent(ctx *strictcli.Context, dbPath string, archiveDir string) (*db.DB, error) {
 	if _, err := os.Stat(dbPath); errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
-	return db.Open(dbPath, retryNotifier(ctx))
+	return db.Open(dbPath, archiveDir, retryNotifier(ctx))
 }
 
 // recordNodeType names what a record archived, in the word every surface uses:

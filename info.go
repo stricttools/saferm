@@ -242,7 +242,7 @@ func handleInfo(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 	archiveDir := kwargs["archive_dir"].(string)
 	dbPath := kwargs["db_path"].(string)
 
-	database, err := openArchiveDBIfPresent(ctx, dbPath)
+	database, err := openArchiveDBIfPresent(ctx, dbPath, archiveDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: opening database: %s\n", err)
 		return strictcli.Exit(dbExit(err))

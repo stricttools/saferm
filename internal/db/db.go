@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -80,17 +81,22 @@ const busyTimeoutMS = 5000
 // Open opens (or creates) the SQLite database at dbPath with WAL mode and
 // busy_timeout, then runs the schema DDL.
 //
+// archiveDir is the archive the database's records name. The schema migration
+// that introduced the node_type column reads every record's entry there, and
+// repairs the entries whose form contradicts their record (see
+// migrateToNodeTypeColumn); no other step touches it.
+//
 // notify, when non-nil, is called before each contention retry -- for every
 // operation on the returned DB as well as for the schema work below, which is
 // why it is supplied here rather than set afterwards. Pass nil for no
 // reporting.
-func Open(dbPath string, notify RetryNotifier) (*DB, error) {
-	return open(dbPath, busyTimeoutMS, notify)
+func Open(dbPath string, archiveDir string, notify RetryNotifier) (*DB, error) {
+	return open(dbPath, archiveDir, busyTimeoutMS, notify)
 }
 
 // open is Open with the busy timeout exposed, so tests can produce real
 // contention without waiting seconds for it.
-func open(dbPath string, busyTimeout int, notify RetryNotifier) (*DB, error) {
+func open(dbPath string, archiveDir string, busyTimeout int, notify RetryNotifier) (*DB, error) {
 	// Pass pragmas via DSN so they take effect on every connection in the pool.
 	dsn := fmt.Sprintf("%s?_pragma=busy_timeout%%3d%d&_pragma=journal_mode%%3dWAL", dbPath, busyTimeout)
 	conn, err := sql.Open("sqlite", dsn)
@@ -106,7 +112,7 @@ func open(dbPath string, busyTimeout int, notify RetryNotifier) (*DB, error) {
 		if _, err := conn.Exec(deletionsTableSQL("deletions")); err != nil {
 			return err
 		}
-		if err := migrate(conn); err != nil {
+		if err := migrate(conn, archiveDir); err != nil {
 			return err
 		}
 		_, err := conn.Exec(indexesSQL)
@@ -120,7 +126,7 @@ func open(dbPath string, busyTimeout int, notify RetryNotifier) (*DB, error) {
 }
 
 // migrate applies schema migrations based on PRAGMA user_version.
-func migrate(conn *sql.DB) error {
+func migrate(conn *sql.DB, archiveDir string) error {
 	var version int
 	if err := conn.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("reading user_version: %w", err)
@@ -190,75 +196,12 @@ func migrate(conn *sql.DB) error {
 	}
 
 	if version < 4 {
-		if err := migrateToNodeTypeColumn(conn); err != nil {
+		if err := migrateToNodeTypeColumn(conn, archiveDir); err != nil {
 			return fmt.Errorf("migration 4 (node_type column): %w", err)
 		}
 	}
 
 	return nil
-}
-
-// migrateToNodeTypeColumn is migration 4: one `node_type` column replaces is_directory
-// and the inference of a symlink from a non-null symlink_target, so what a
-// record archived is stated once, by the row, and is checked by the schema.
-//
-// SQLite can neither add a column carrying a CHECK constraint nor drop one, so
-// the table is rebuilt: the new definition is created under a temporary name,
-// every row is copied with its node type derived the way the readers used to derive
-// it (a symlink target first, because a link to a directory carried both
-// markers and what saferm archived was the link), the old table is dropped and
-// the new one takes its name. The AUTOINCREMENT counter is carried across, so
-// a numeric id is never issued twice. It is one transaction: a database is
-// either wholly at version 3 or wholly at version 4.
-//
-// A binary from before this migration cannot read or write the rebuilt table,
-// and that is deliberate: saferm is pre-stable and keeps no second spelling of
-// a record's node type for older readers.
-func migrateToNodeTypeColumn(conn *sql.DB) error {
-	present, err := hasColumn(conn, "deletions", "node_type")
-	if err != nil {
-		return err
-	}
-	tx, err := conn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if !present {
-		var seq sql.NullInt64
-		err := tx.QueryRow(`SELECT seq FROM sqlite_sequence WHERE name = 'deletions'`).Scan(&seq)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("reading the id counter: %w", err)
-		}
-		const kept = `id, uuid, original_path, original_name, size, hash, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, purged_at, origin_name, origin_version, group_id`
-		steps := []string{
-			deletionsTableSQL("deletions_rebuild"),
-			`INSERT INTO deletions_rebuild (` + kept + `, node_type) SELECT ` + kept + `, CASE` +
-				` WHEN symlink_target IS NOT NULL THEN '` + string(archive.NodeTypeSymlink) + `'` +
-				` WHEN is_directory != 0 THEN '` + string(archive.NodeTypeDirectory) + `'` +
-				` ELSE '` + string(archive.NodeTypeFile) + `' END FROM deletions`,
-			`DROP TABLE deletions`,
-			`ALTER TABLE deletions_rebuild RENAME TO deletions`,
-		}
-		for _, step := range steps {
-			if _, err := tx.Exec(step); err != nil {
-				return err
-			}
-		}
-		if seq.Valid {
-			if _, err := tx.Exec(`DELETE FROM sqlite_sequence WHERE name = 'deletions'`); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(`INSERT INTO sqlite_sequence (name, seq) VALUES ('deletions', MAX(?, (SELECT IFNULL(MAX(id), 0) FROM deletions)))`, seq.Int64); err != nil {
-				return err
-			}
-		}
-	}
-	if _, err := tx.Exec("PRAGMA user_version = 4"); err != nil {
-		return fmt.Errorf("setting user_version to 4: %w", err)
-	}
-	return tx.Commit()
 }
 
 // hasColumn reports whether a table has a column with the given name.
@@ -270,8 +213,8 @@ func migrateToNodeTypeColumn(conn *sql.DB) error {
 // misleading -- SQLITE_BUSY read as "column missing" produces a follow-up
 // failure that the classifier cannot recognize as contention, so the operation
 // that would have succeeded on the next attempt fails permanently instead.
-func hasColumn(conn *sql.DB, table, column string) (bool, error) {
-	rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+func hasColumn(conn querier, table, column string) (bool, error) {
+	rows, err := conn.QueryContext(context.Background(), fmt.Sprintf("PRAGMA table_info(%s)", table))
 	if err != nil {
 		return false, fmt.Errorf("reading columns of %s: %w", table, err)
 	}
@@ -563,38 +506,6 @@ func (d *DB) MarkPurged(id int64) error {
 		}
 		if n == 0 {
 			return ErrNotFound
-		}
-		return nil
-	})
-}
-
-// ErrRecordChanged is a conditional update whose row was no longer in the state
-// the caller read: restored, purged, or already given another node type.
-var ErrRecordChanged = errors.New("the record changed since it was read")
-
-// Reclassify gives a live record of node type from the node type to, with the
-// symlink target, hash and size a deletion of that node type records. It changes
-// the row only while it is still live and still of node type from, and reports
-// [ErrRecordChanged] otherwise, so a concurrent restore or purge is never
-// overwritten.
-func (d *DB) Reclassify(id int64, from, to archive.NodeType, symlinkTarget *string, hash string, size int64) error {
-	if _, err := archive.ParseNodeType(string(to)); err != nil {
-		return err
-	}
-	return d.retry(func() error {
-		result, err := d.conn.Exec(
-			`UPDATE deletions SET node_type = ?, symlink_target = ?, hash = ?, size = ?
-			 WHERE id = ? AND node_type = ? AND `+liveOnly,
-			string(to), symlinkTarget, hash, size, id, string(from))
-		if err != nil {
-			return err
-		}
-		n, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if n == 0 {
-			return ErrRecordChanged
 		}
 		return nil
 	})

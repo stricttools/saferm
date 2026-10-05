@@ -187,7 +187,7 @@ func TestSchema_FreshAndMigratedDatabasesAgree(t *testing.T) {
 		{"ancient", openAtSchema(t, "ancient", ancientSchemaSQL)},
 		{"legacy", openAtSchema(t, "legacy", legacySchemaSQL)},
 	} {
-		d, err := Open(tc.path, nil)
+		d, err := Open(tc.path, t.TempDir(), nil)
 		if err != nil {
 			t.Fatalf("%s: Open failed: %v", tc.label, err)
 		}

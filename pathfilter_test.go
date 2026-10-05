@@ -85,7 +85,7 @@ func oldListFilter(t *testing.T, database *db.DB, pattern string, includeAll boo
 // same order, as reading everything and filtering in Go did.
 func TestListPathSelectionMatchesTheInGoFilter(t *testing.T) {
 	testutil.Isolate(t)
-	database, err := db.Open(filepath.Join(t.TempDir(), "saferm.db"), nil)
+	database, err := db.Open(filepath.Join(t.TempDir(), "saferm.db"), t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open failed: %v", err)
 	}

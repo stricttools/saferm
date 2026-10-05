@@ -735,7 +735,6 @@ var pinnedFeatures = []string{
 	"machine-payloads",
 	"on-conflict-modes",
 	"on-error-modes",
-	"reclassify-records",
 	"restore-destination",
 	"trace-origin",
 	"usage-report",

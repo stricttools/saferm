@@ -67,7 +67,7 @@ func openLegacyDB(t *testing.T) string {
 func TestMigration_OldDatabaseGainsOriginAndGroupColumns(t *testing.T) {
 	dbPath := openLegacyDB(t)
 
-	d, err := Open(dbPath, nil)
+	d, err := Open(dbPath, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open on a legacy database failed: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestInsert_VersionWithoutNameIsRejected(t *testing.T) {
 	fresh := openTestDB(t)
 
 	migratedPath := openLegacyDB(t)
-	migrated, err := Open(migratedPath, nil)
+	migrated, err := Open(migratedPath, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open on a legacy database failed: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestInsert_VersionWithoutNameIsRejected(t *testing.T) {
 func TestMigratedDatabase_RefusesPreNodeTypeWrites(t *testing.T) {
 	dbPath := openLegacyDB(t)
 
-	d, err := Open(dbPath, nil)
+	d, err := Open(dbPath, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open on a legacy database failed: %v", err)
 	}

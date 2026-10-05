@@ -47,7 +47,7 @@ func holdWriteLock(t *testing.T, dbPath string) func() {
 // SQLite's wait.
 func openContended(t *testing.T, dbPath string, notify RetryNotifier) *DB {
 	t.Helper()
-	d, err := open(dbPath, 0, notify)
+	d, err := open(dbPath, t.TempDir(), 0, notify)
 	if err != nil {
 		t.Fatalf("open failed: %v", err)
 	}

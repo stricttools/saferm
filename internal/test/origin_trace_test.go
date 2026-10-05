@@ -82,7 +82,7 @@ func archivedUUIDs(t *testing.T, stdout string) []string {
 // to read columns no command prints yet.
 func openArchive(t *testing.T, homeDir string) *db.DB {
 	t.Helper()
-	d, err := db.Open(filepath.Join(homeDir, ".saferm", "db", "saferm.db"), nil)
+	d, err := db.Open(filepath.Join(homeDir, ".saferm", "db", "saferm.db"), filepath.Join(homeDir, ".saferm", "archive"), nil)
 	if err != nil {
 		t.Fatalf("opening the archive database: %v", err)
 	}

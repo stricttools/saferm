@@ -7,35 +7,8 @@ import (
 	"time"
 
 	"github.com/stricttools/saferm/internal/archive"
+	"github.com/stricttools/saferm/internal/testutil"
 )
-
-// v3SchemaSQL is the deletions table as saferm shipped it at user_version 3,
-// the last schema with is_directory and no node_type column.
-const v3SchemaSQL = `
-CREATE TABLE IF NOT EXISTS deletions (
-	id            INTEGER PRIMARY KEY AUTOINCREMENT,
-	uuid          TEXT NOT NULL UNIQUE,
-	original_path TEXT NOT NULL,
-	original_name TEXT NOT NULL,
-	size          INTEGER NOT NULL,
-	hash          TEXT NOT NULL,
-	is_directory  INTEGER NOT NULL DEFAULT 0,
-	deleted_at    TEXT NOT NULL,
-	command       TEXT,
-	description   TEXT NOT NULL,
-	metadata      TEXT,
-	restored_at   TEXT,
-	restored_to   TEXT,
-	symlink_target TEXT,
-	purged_at     TEXT,
-	origin_name    TEXT,
-	origin_version TEXT,
-	group_id       TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_deletions_original_path ON deletions(original_path);
-CREATE INDEX IF NOT EXISTS idx_deletions_deleted_at ON deletions(deleted_at);
-PRAGMA user_version = 3;
-`
 
 // openV3DB writes one file, one tree, one symlink and one symlink to a
 // directory (which carries both markers) through the version-3 schema, then
@@ -48,7 +21,7 @@ func openV3DB(t *testing.T) string {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	if _, err := conn.Exec(v3SchemaSQL); err != nil {
+	if _, err := conn.Exec(testutil.V3SchemaSQL); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().Format(time.RFC3339)
@@ -77,7 +50,7 @@ func openV3DB(t *testing.T) string {
 }
 
 func TestMigration4_DerivesEveryRowsNodeType(t *testing.T) {
-	d, err := Open(openV3DB(t), nil)
+	d, err := Open(openV3DB(t), t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -104,7 +77,7 @@ func TestMigration4_DerivesEveryRowsNodeType(t *testing.T) {
 }
 
 func TestMigration4_NeverReissuesAnID(t *testing.T) {
-	d, err := Open(openV3DB(t), nil)
+	d, err := Open(openV3DB(t), t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -125,7 +98,7 @@ func TestNodeTypeColumn_RefusesAnUnknownNodeTypeAndAnInconsistentSymlink(t *test
 		if label == "migrated" {
 			path = openV3DB(t)
 		}
-		d, err := Open(path, nil)
+		d, err := Open(path, t.TempDir(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}

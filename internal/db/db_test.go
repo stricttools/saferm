@@ -14,7 +14,7 @@ import (
 func openTestDB(t *testing.T) *DB {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	d, err := Open(dbPath, nil)
+	d, err := Open(dbPath, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open failed: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestOpen_CreatesSchema(t *testing.T) {
 // would have classified it. The query error has to surface instead.
 func TestHasColumnSurfacesQueryErrors(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	d, err := Open(dbPath, nil)
+	d, err := Open(dbPath, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("Open failed: %v", err)
 	}

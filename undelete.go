@@ -114,7 +114,7 @@ func handleUndelete(ctx *strictcli.Context, kwargs map[string]interface{}) stric
 		return strictcli.Exit(ExitGeneral)
 	}
 
-	database, err := openArchiveDB(ctx, dbPath)
+	database, err := openArchiveDB(ctx, dbPath, archiveDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: opening database: %s\n", err)
 		return strictcli.Exit(dbExit(err))

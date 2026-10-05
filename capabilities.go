@@ -54,10 +54,6 @@ const (
 	// no default.
 	featureOnErrorModes = "on-error-modes"
 
-	// featureReclassifyRecords: `reclassify-records` gives every live record
-	// whose archive entry contradicts its node type the node type the entry holds.
-	featureReclassifyRecords = "reclassify-records"
-
 	// featureRestoreDestination: `undelete --destination <path>` restores
 	// somewhere other than the recorded original, and writes where the content
 	// went to the record.
@@ -95,7 +91,6 @@ var features = append([]string{
 	featureMachinePayloads,
 	featureOnConflictModes,
 	featureOnErrorModes,
-	featureReclassifyRecords,
 	featureRestoreDestination,
 	featureTraceOrigin,
 	featureUsageReport,
