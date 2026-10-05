@@ -568,6 +568,38 @@ func (d *DB) MarkPurged(id int64) error {
 	})
 }
 
+// ErrRecordChanged is a conditional update whose row was no longer in the state
+// the caller read: restored, purged, or already given another kind.
+var ErrRecordChanged = errors.New("the record changed since it was read")
+
+// Reclassify gives a live record of kind from the kind to, with the symlink
+// target, hash and size a deletion of that kind records. It changes the row
+// only while it is still live and still of kind from, and reports
+// [ErrRecordChanged] otherwise, so a concurrent restore or purge is never
+// overwritten.
+func (d *DB) Reclassify(id int64, from, to archive.Kind, symlinkTarget *string, hash string, size int64) error {
+	if _, err := archive.ParseKind(string(to)); err != nil {
+		return err
+	}
+	return d.retry(func() error {
+		result, err := d.conn.Exec(
+			`UPDATE deletions SET kind = ?, symlink_target = ?, hash = ?, size = ?
+			 WHERE id = ? AND kind = ? AND `+liveOnly,
+			string(to), symlinkTarget, hash, size, id, string(from))
+		if err != nil {
+			return err
+		}
+		n, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return ErrRecordChanged
+		}
+		return nil
+	})
+}
+
 // QueryOlderThan returns all non-restored, non-purged records deleted before
 // the given time, newest first.
 func (d *DB) QueryOlderThan(before time.Time) ([]*DeletionRecord, error) {

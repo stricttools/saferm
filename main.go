@@ -57,6 +57,7 @@ func newApp() *strictcli.App {
 	registerInfoCmd(app)
 	registerUsageCmd(app)
 	registerCapabilitiesCmd(app)
+	registerReclassifyCmd(app)
 
 	return app
 }

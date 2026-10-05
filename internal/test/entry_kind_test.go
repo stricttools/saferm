@@ -82,3 +82,98 @@ func TestInfoAndUndelete_ReportAnEntryThatContradictsItsKindAsCorrupt(t *testing
 		})
 	}
 }
+
+// reclassify-records turns a FIFO and a symlink that older saferm versions
+// recorded as files into records of their real kinds, after a dry run that
+// changes nothing, and both are then restorable as what they were.
+func TestReclassifyRecords_MakesContradictedRecordsRestorable(t *testing.T) {
+	home := testutil.SetupTestEnv(t)
+	archiveDir := filepath.Join(home, ".saferm", "archive")
+	fifoUUID := recordFileOverEntry(t, home, func(p string) error { return syscall.Mkfifo(p, 0o640) })
+	linkUUID := recordFileOverEntry(t, home, func(p string) error { return os.Symlink("../../scripts/hooks/pre-push", p) })
+	healthy := filepath.Join(t.TempDir(), "healthy.txt")
+	if err := os.WriteFile(healthy, []byte("fine"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	healthyUUID := archiveSpecial(t, home, healthy)
+
+	stdout, stderr, code := runSafermWithin(t, specialLimit, home, nil, "--dry-run", "reclassify-records")
+	if code != 0 {
+		t.Fatalf("dry run: exit %d: %s", code, stderr)
+	}
+	for _, want := range []string{
+		"would reclassify: [", fifoUUID, "recorded as a file, the entry is a fifo",
+		linkUUID, "the entry is a symlink to ../../scripts/hooks/pre-push",
+		fifoUUID + ".node (", linkUUID + ".symlink (",
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("the dry run does not say %q:\n%s", want, stdout)
+		}
+	}
+	if strings.Contains(stdout, healthyUUID) {
+		t.Errorf("the dry run names the healthy record:\n%s", stdout)
+	}
+	if info, err := os.Lstat(filepath.Join(archiveDir, fifoUUID)); err != nil || info.Mode().Type() != os.ModeNamedPipe {
+		t.Fatalf("the dry run changed the FIFO entry: %v", err)
+	}
+	out, _, _ := runSaferm(t, home, "info", fifoUUID)
+	if parseInfoField(t, out, "Type:") != "file" {
+		t.Fatalf("the dry run changed the record:\n%s", out)
+	}
+
+	stdout, stderr, code = runSafermWithin(t, specialLimit, home, nil, "reclassify-records")
+	if code != 0 {
+		t.Fatalf("reclassify-records: exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "2 record(s) reclassified") {
+		t.Errorf("no summary:\n%s", stdout)
+	}
+	assertInfoType(t, home, fifoUUID, "fifo")
+	assertInfoType(t, home, linkUUID, "symlink")
+	assertInfoType(t, home, healthyUUID, "file")
+	for _, old := range []string{fifoUUID, linkUUID} {
+		if _, err := os.Lstat(filepath.Join(archiveDir, old)); !os.IsNotExist(err) {
+			t.Errorf("the old entry %s is still there: %v", old, err)
+		}
+	}
+
+	stdout, _, code = runSafermWithin(t, specialLimit, home, nil, "reclassify-records")
+	if code != 0 || !strings.Contains(stdout, "nothing to reclassify") {
+		t.Errorf("a second run: exit %d:\n%s", code, stdout)
+	}
+
+	linkDest := filepath.Join(t.TempDir(), "hook")
+	if _, stderr, code := runSafermWithin(t, specialLimit, home, nil, "undelete", "--destination", linkDest, linkUUID); code != 0 {
+		t.Fatalf("undelete of the reclassified symlink: exit %d: %s", code, stderr)
+	}
+	if target, err := os.Readlink(linkDest); err != nil || target != "../../scripts/hooks/pre-push" {
+		t.Errorf("restored link reads %q (%v)", target, err)
+	}
+	fifoDest := filepath.Join(t.TempDir(), "pipe")
+	if _, stderr, code := runSafermWithin(t, specialLimit, home, nil, "undelete", "--destination", fifoDest, fifoUUID); code != 0 {
+		t.Fatalf("undelete of the reclassified FIFO: exit %d: %s", code, stderr)
+	}
+	if info, err := os.Lstat(fifoDest); err != nil || info.Mode() != os.ModeNamedPipe|0o640 {
+		t.Errorf("restored FIFO: %v (%v)", info, err)
+	}
+}
+
+// A contradiction no reclassification resolves refuses the whole run before
+// anything changes, naming the record.
+func TestReclassifyRecords_RefusesWhatItCannotResolveAndChangesNothing(t *testing.T) {
+	home := testutil.SetupTestEnv(t)
+	archiveDir := filepath.Join(home, ".saferm", "archive")
+	fifoUUID := recordFileOverEntry(t, home, func(p string) error { return syscall.Mkfifo(p, 0o640) })
+	dirUUID := recordFileOverEntry(t, home, func(p string) error { return os.Mkdir(p, 0o755) })
+
+	_, stderr, code := runSafermWithin(t, specialLimit, home, nil, "reclassify-records")
+	if code != 6 || !strings.Contains(stderr, dirUUID) || !strings.Contains(stderr, "nothing was changed") {
+		t.Fatalf("exit %d, stderr %q; want exit 6 naming %s", code, stderr, dirUUID)
+	}
+	if info, err := os.Lstat(filepath.Join(archiveDir, fifoUUID)); err != nil || info.Mode().Type() != os.ModeNamedPipe {
+		t.Errorf("the resolvable record's entry was changed: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(archiveDir, fifoUUID+".node")); !os.IsNotExist(err) {
+		t.Errorf("a descriptor was written: %v", err)
+	}
+}
