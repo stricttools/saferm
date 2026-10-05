@@ -1,6 +1,6 @@
 +++
 title = "Machine surface"
-description = "How a program drives saferm: the --json envelope, the payload each consumer verb answers with (list's rows with their total, the usage report's disk figures, and when a payload is null), and the capabilities probe."
+description = "How a program drives saferm: the --json envelope, the payload each consumer verb answers with (list's rows with their total, the usage report's disk figures, and when a payload is null), and the capabilities probe with one node-type feature per node type."
 +++
 
 # Machine surface

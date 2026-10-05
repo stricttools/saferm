@@ -1,6 +1,6 @@
 +++
 title = "Configuration"
-description = "How saferm finds its archive and database, plus SAFERM_HOME, the config file, hermetic mode, the SQLite schema, the bounded contention retry, and environment-variable filtering."
+description = "How saferm finds its archive and database, plus SAFERM_HOME, the config file, hermetic mode, the SQLite schema with its node_type column, the bounded contention retry, and environment-variable filtering."
 +++
 
 # Configuration
