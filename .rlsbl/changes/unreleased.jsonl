@@ -26,3 +26,4 @@
 {"format_version":1,"id":"18da2a3680148778aff969fa4ad5476fa9f6df64278d030b","commits":["2ea612d95a25e4ce80714b9eb78e77fb879b0b35"],"user_facing":false}
 {"format_version":1,"id":"18da2a3aea57209e1ca316cf01fa46c0a5132797bb046221","commits":["a14da1eb0bf7a7426d1daa6846cb185367c245a4"],"user_facing":false}
 {"format_version":1,"id":"18da33d7ff9d2f6f16fc6644b378490e9e4ffd1ffc1cbb3d","commits":["43ec19e95be5cc18263f56f2408df2de4da4b695"],"user_facing":false}
+{"format_version":1,"id":"18dbab958e4d1649b8a7d6c29f1c4b5fbfa584fe5e52f95e","commits":["3e716c2a7f45c48046fa08fa5446626a37fd67ca"],"user_facing":true,"description":"A path swapped for a FIFO, socket, device, or symlink while `saferm delete` reads it now fails that path's deletion instead of blocking forever on the FIFO or hashing whatever the symlink names.","type":"fix"}
