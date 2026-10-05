@@ -39,6 +39,10 @@ type envelope struct {
 		Level   string `json:"level"`
 		Message string `json:"message"`
 	} `json:"diagnostics"`
+	// The text a handler wrote through the framework's answer writer, null
+	// when none: saferm writes every line through its diagnostics instead, so
+	// this is null on every one of saferm's envelopes.
+	Output *string `json:"output"`
 }
 
 // runSafermJSON runs saferm in machine mode and parses the one document stdout
@@ -57,10 +61,13 @@ func runSafermJSON(t *testing.T, homeDir string, args ...string) (envelope, stri
 	if err := json.Unmarshal([]byte(trimmed), &env); err != nil {
 		t.Fatalf("stdout is not one envelope (%v): %q", err, stdout)
 	}
-	if env.InterfaceVersion != 2 {
-		t.Errorf("interface_version = %d, want 2", env.InterfaceVersion)
+	if env.InterfaceVersion != 3 {
+		t.Errorf("interface_version = %d, want 3", env.InterfaceVersion)
 	}
-	// saferm declares no update command, so the version-2 member that names an
+	if env.Output != nil {
+		t.Errorf("output = %q, want null: saferm carries its text in the diagnostics", *env.Output)
+	}
+	// saferm declares no update command, so the envelope member that names an
 	// update's write set is null on every one of saferm's envelopes.
 	if s := string(env.Writes); s != "null" {
 		t.Errorf("writes = %s, want null", s)

@@ -11,7 +11,7 @@ import (
 
 	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // say prints progress or summary chatter to stdout unless --quiet is in force.

@@ -7,7 +7,7 @@
 package main
 
 import (
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // newApp builds the fully-registered saferm app. It is separate from main so

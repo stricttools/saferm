@@ -11,7 +11,7 @@ import (
 	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
 	"github.com/stricttools/saferm/internal/meta"
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // The closed set of words the machine payload's `status` takes. They are the

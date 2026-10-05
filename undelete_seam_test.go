@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 	"github.com/stricttools/testisolation/go/hygiene"
 )
 

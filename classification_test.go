@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 	"github.com/stricttools/testisolation/go/hygiene"
 )
 
@@ -123,7 +123,7 @@ func TestCommandClassificationIsPinned(t *testing.T) {
 
 // machineSurface pins which of saferm's own commands answer a machine, and
 // therefore what a consumer may parse. Membership IS the surface: a command
-// with a declared payload schema publishes that schema through --dump-schema
+// with a declared payload schema publishes that schema through `help --json`
 // and through the MCP tool descriptor, and one without it answers --json with a
 // null payload.
 //

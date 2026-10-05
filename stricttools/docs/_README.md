@@ -108,7 +108,7 @@ Either way the identifiers of everything already archived are on stdout before t
 
 ```
 $ saferm --json capabilities
-{"interface_version":2,"app":"saferm","command":"capabilities","exit_code":0,
+{"interface_version":3,"app":"saferm","command":"capabilities","exit_code":0,
  "payload":{"features":["git-index-switches","group-id","list-limit","list-since","machine-payloads",
  "on-conflict-modes","on-error-modes","reclassify-records","restore-destination","trace-origin","usage-report",
  "uuid-handles","kind-file","kind-directory","kind-symlink","kind-fifo","kind-socket","kind-character-device",
@@ -117,7 +117,7 @@ $ saferm --json capabilities
 
 `capabilities` is how a program decides what this saferm can do. It names features, never a version -- a locally built binary reports a Go pseudo-version no semver parser accepts -- and a missing verb or a missing feature means the same thing as saferm not being installed. The verb reads nothing, so it answers on a machine where saferm has never run.
 
-The payload schemas are declared in the code and published verbatim by `saferm --dump-schema`, which is the one channel that carries them. The MCP tool descriptors (`saferm --mcp`) carry each command's effect classification and its argument schema, never its payload schema. The machine-surface page in the docs is the specification.
+The payload schemas are declared in the code and published verbatim by `saferm help --json`, which is the one channel that carries them. The MCP tool descriptors (`saferm --mcp`) carry each command's effect classification and its argument schema, never its payload schema. The machine-surface page in the docs is the specification.
 
 ## Metadata
 

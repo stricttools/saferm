@@ -14,7 +14,7 @@ import (
 	"github.com/stricttools/saferm/internal/db"
 	gitutil "github.com/stricttools/saferm/internal/git"
 	"github.com/stricttools/saferm/internal/meta"
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // The two error modes `delete` accepts, spelled once.

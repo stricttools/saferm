@@ -26,14 +26,15 @@ In machine mode **stdout carries exactly one document**: the envelope, serialize
 
 | Key | Type | Meaning |
 |-----|------|---------|
-| `interface_version` | integer | The envelope contract's own version. `2` today. A consumer pinning `interface_version == 1` must be updated before it can read saferm 0.10.0 or later. |
+| `interface_version` | integer | The envelope contract's own version, `3`. A consumer pinning an earlier version must be updated before it can read this envelope. |
 | `app` | string | `saferm`. |
 | `app_version` | string | The version of the binary that ran. |
 | `command` | string \| null | The command that ran (`list`, `config.show`). `null` when the run ended before a command resolved -- a parse error, an unknown command. |
 | `exit_code` | integer | The process's exit status -- the same codes saferm returns outside machine mode. |
 | `payload` | any \| null | The verb's own answer, described below. `null` for a verb that declares no payload, and for a run that failed before producing one. |
+| `output` | string \| null | The text a command wrote through the framework's answer writer. **Always `null` in saferm**, which carries every line it prints in `diagnostics`. |
 | `dry_run` | boolean | Whether the run was a preview. |
-| `writes` | object \| null | The properties an update command wrote. **Always `null` in saferm**, which declares no update command; it is part of the version-2 contract and is present on every envelope. |
+| `writes` | object \| null | The properties an update command wrote. **Always `null` in saferm**, which declares no update command; it is part of the envelope contract and is present on every envelope. |
 | `preview` | array | The structured effects the run recorded: every path it wrote, moved or removed. Populated in both modes. |
 | `preview_error` | object \| null | Why a preview stopped early, when it did. |
 | `diagnostics` | array | Every line the run would have printed, in order, as `{"level", "message"}`. |
@@ -231,9 +232,9 @@ Adding a name is how a new capability becomes negotiable. Removing one is a brea
 
 The payload schemas are not documented here and implemented somewhere else -- they are the same artifact. Each verb declares its schema as an inline JSON Schema literal over the framework's closed subset, and the framework validates the emitted value against that declaration at the point it writes the envelope. A payload that deviates from its declaration fails the run rather than shipping a wrong shape.
 
-That declaration is published on exactly one machine-readable channel, framework-owned: **`saferm --dump-schema`** writes `.strictcli/schema.json`, which carries every command with its flags, its args, its effect classification and its `payload_schema` verbatim. There is no second convention -- a consumer that wants the machine-readable contract reads that file, and this page is the prose that explains what the fields mean.
+That declaration is published on exactly one machine-readable channel, framework-owned: **`saferm help --json`** prints the help document on stdout, and the committed `.strictcli/schema.json` is that document. It carries every command with its flags, its args, its effect classification and its `payload_schema` verbatim. There is no second convention -- a consumer that wants the machine-readable contract reads that file, and this page is the prose that explains what the fields mean.
 
-**The MCP server** (`saferm --mcp`) is not a second copy of it. It publishes the same commands as tools, and a tool descriptor carries the command's name, its help text, its `effect` (plus `consequential` where it applies) and the `inputSchema` for its arguments -- what saferm accepts and what calling it does to the world. No payload schema appears there: an MCP client learns nothing about the shape of the answer from the descriptor, and reads `--dump-schema` for that.
+**The MCP server** (`saferm --mcp`) is not a second copy of it. It publishes the same commands as tools, and a tool descriptor carries the command's name, its help text, its `effect` (plus `consequential` where it applies) and the `inputSchema` for its arguments -- what saferm accepts and what calling it does to the world. No payload schema appears there: an MCP client learns nothing about the shape of the answer from the descriptor, and reads `saferm help --json` for that.
 
 ## Effect classification
 

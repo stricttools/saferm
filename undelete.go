@@ -8,7 +8,7 @@ import (
 
 	"github.com/stricttools/saferm/internal/archive"
 	gitutil "github.com/stricttools/saferm/internal/git"
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // The two answers `undelete` accepts for a destination that is already

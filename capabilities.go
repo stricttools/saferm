@@ -5,7 +5,7 @@ import (
 
 	"github.com/stricttools/saferm/internal/archive"
 
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // The features saferm ships, named one by one.
