@@ -575,38 +575,38 @@
         },
         {
           "level": 3,
-          "text": "`KindFile`",
-          "anchor": "kindfile"
+          "text": "`NodeTypeFile`",
+          "anchor": "nodetypefile"
         },
         {
           "level": 3,
-          "text": "`KindDirectory`",
-          "anchor": "kinddirectory"
+          "text": "`NodeTypeDirectory`",
+          "anchor": "nodetypedirectory"
         },
         {
           "level": 3,
-          "text": "`KindSymlink`",
-          "anchor": "kindsymlink"
+          "text": "`NodeTypeSymlink`",
+          "anchor": "nodetypesymlink"
         },
         {
           "level": 3,
-          "text": "`KindFIFO`",
-          "anchor": "kindfifo"
+          "text": "`NodeTypeFIFO`",
+          "anchor": "nodetypefifo"
         },
         {
           "level": 3,
-          "text": "`KindSocket`",
-          "anchor": "kindsocket"
+          "text": "`NodeTypeSocket`",
+          "anchor": "nodetypesocket"
         },
         {
           "level": 3,
-          "text": "`KindCharacterDevice`",
-          "anchor": "kindcharacterdevice"
+          "text": "`NodeTypeCharacterDevice`",
+          "anchor": "nodetypecharacterdevice"
         },
         {
           "level": 3,
-          "text": "`KindBlockDevice`",
-          "anchor": "kindblockdevice"
+          "text": "`NodeTypeBlockDevice`",
+          "anchor": "nodetypeblockdevice"
         },
         {
           "level": 3,
@@ -690,8 +690,13 @@
         },
         {
           "level": 3,
-          "text": "`ErrUnknownKind`",
-          "anchor": "errunknownkind"
+          "text": "`ErrEntryUnrepairable`",
+          "anchor": "errentryunrepairable"
+        },
+        {
+          "level": 3,
+          "text": "`ErrRepairEntryExists`",
+          "anchor": "errrepairentryexists"
         },
         {
           "level": 3,
@@ -710,8 +715,8 @@
         },
         {
           "level": 3,
-          "text": "`ErrNotReclassifiable`",
-          "anchor": "errnotreclassifiable"
+          "text": "`ErrUnknownNodeType`",
+          "anchor": "errunknownnodetype"
         },
         {
           "level": 3,
@@ -730,13 +735,8 @@
         },
         {
           "level": 3,
-          "text": "`Kind`",
-          "anchor": "kind"
-        },
-        {
-          "level": 3,
-          "text": "`UnsupportedFileError`",
-          "anchor": "unsupportedfileerror"
+          "text": "`EntryRepair`",
+          "anchor": "entryrepair"
         },
         {
           "level": 3,
@@ -745,8 +745,13 @@
         },
         {
           "level": 3,
-          "text": "`Reclassification`",
-          "anchor": "reclassification"
+          "text": "`NodeType`",
+          "anchor": "nodetype"
+        },
+        {
+          "level": 3,
+          "text": "`UnsupportedFileError`",
+          "anchor": "unsupportedfileerror"
         },
         {
           "level": 3,
@@ -825,28 +830,18 @@
         },
         {
           "level": 3,
-          "text": "`Kinds`",
-          "anchor": "kinds"
+          "text": "`PlanEntryRepair`",
+          "anchor": "planentryrepair"
         },
         {
           "level": 3,
-          "text": "`ParseKind`",
-          "anchor": "parsekind"
+          "text": "`SyncDir`",
+          "anchor": "syncdir"
         },
         {
           "level": 3,
-          "text": "`EntryPath`",
-          "anchor": "entrypath"
-        },
-        {
-          "level": 3,
-          "text": "`Classify`",
-          "anchor": "classify"
-        },
-        {
-          "level": 3,
-          "text": "`IsNodeKind`",
-          "anchor": "isnodekind"
+          "text": "`IsSpecialFileType`",
+          "anchor": "isspecialfiletype"
         },
         {
           "level": 3,
@@ -860,8 +855,23 @@
         },
         {
           "level": 3,
-          "text": "`PlanReclassification`",
-          "anchor": "planreclassification"
+          "text": "`NodeTypes`",
+          "anchor": "nodetypes"
+        },
+        {
+          "level": 3,
+          "text": "`ParseNodeType`",
+          "anchor": "parsenodetype"
+        },
+        {
+          "level": 3,
+          "text": "`EntryPath`",
+          "anchor": "entrypath"
+        },
+        {
+          "level": 3,
+          "text": "`Classify`",
+          "anchor": "classify"
         },
         {
           "level": 3,
@@ -870,18 +880,18 @@
         },
         {
           "level": 3,
+          "text": "`EntryRepair.WriteEntry`",
+          "anchor": "entryrepairwriteentry"
+        },
+        {
+          "level": 3,
+          "text": "`EntryRepair.DiscardEntry`",
+          "anchor": "entryrepairdiscardentry"
+        },
+        {
+          "level": 3,
           "text": "`UnsupportedFileError.Error`",
           "anchor": "unsupportedfileerrorerror"
-        },
-        {
-          "level": 3,
-          "text": "`Reclassification.WriteEntry`",
-          "anchor": "reclassificationwriteentry"
-        },
-        {
-          "level": 3,
-          "text": "`Reclassification.DiscardEntry`",
-          "anchor": "reclassificationdiscardentry"
         },
         {
           "level": 2,
@@ -902,11 +912,6 @@
           "level": 3,
           "text": "`ErrOriginEmpty`",
           "anchor": "erroriginempty"
-        },
-        {
-          "level": 3,
-          "text": "`ErrRecordChanged`",
-          "anchor": "errrecordchanged"
         },
         {
           "level": 3,
@@ -1010,13 +1015,13 @@
         },
         {
           "level": 3,
-          "text": "`DB.Reclassify`",
-          "anchor": "dbreclassify"
+          "text": "`DB.QueryOlderThan`",
+          "anchor": "dbqueryolderthan"
         },
         {
           "level": 3,
-          "text": "`DB.QueryOlderThan`",
-          "anchor": "dbqueryolderthan"
+          "text": "`plannedRepair.String`",
+          "anchor": "plannedrepairstring"
         },
         {
           "level": 3,
@@ -1162,38 +1167,38 @@
         },
         {
           "level": 3,
-          "text": "`KindFile`",
-          "anchor": "kindfile"
+          "text": "`NodeTypeFile`",
+          "anchor": "nodetypefile"
         },
         {
           "level": 3,
-          "text": "`KindDirectory`",
-          "anchor": "kinddirectory"
+          "text": "`NodeTypeDirectory`",
+          "anchor": "nodetypedirectory"
         },
         {
           "level": 3,
-          "text": "`KindSymlink`",
-          "anchor": "kindsymlink"
+          "text": "`NodeTypeSymlink`",
+          "anchor": "nodetypesymlink"
         },
         {
           "level": 3,
-          "text": "`KindFIFO`",
-          "anchor": "kindfifo"
+          "text": "`NodeTypeFIFO`",
+          "anchor": "nodetypefifo"
         },
         {
           "level": 3,
-          "text": "`KindSocket`",
-          "anchor": "kindsocket"
+          "text": "`NodeTypeSocket`",
+          "anchor": "nodetypesocket"
         },
         {
           "level": 3,
-          "text": "`KindCharacterDevice`",
-          "anchor": "kindcharacterdevice"
+          "text": "`NodeTypeCharacterDevice`",
+          "anchor": "nodetypecharacterdevice"
         },
         {
           "level": 3,
-          "text": "`KindBlockDevice`",
-          "anchor": "kindblockdevice"
+          "text": "`NodeTypeBlockDevice`",
+          "anchor": "nodetypeblockdevice"
         },
         {
           "level": 3,
@@ -1277,8 +1282,13 @@
         },
         {
           "level": 3,
-          "text": "`ErrUnknownKind`",
-          "anchor": "errunknownkind"
+          "text": "`ErrEntryUnrepairable`",
+          "anchor": "errentryunrepairable"
+        },
+        {
+          "level": 3,
+          "text": "`ErrRepairEntryExists`",
+          "anchor": "errrepairentryexists"
         },
         {
           "level": 3,
@@ -1297,8 +1307,8 @@
         },
         {
           "level": 3,
-          "text": "`ErrNotReclassifiable`",
-          "anchor": "errnotreclassifiable"
+          "text": "`ErrUnknownNodeType`",
+          "anchor": "errunknownnodetype"
         },
         {
           "level": 3,
@@ -1317,13 +1327,8 @@
         },
         {
           "level": 3,
-          "text": "`Kind`",
-          "anchor": "kind"
-        },
-        {
-          "level": 3,
-          "text": "`UnsupportedFileError`",
-          "anchor": "unsupportedfileerror"
+          "text": "`EntryRepair`",
+          "anchor": "entryrepair"
         },
         {
           "level": 3,
@@ -1332,8 +1337,13 @@
         },
         {
           "level": 3,
-          "text": "`Reclassification`",
-          "anchor": "reclassification"
+          "text": "`NodeType`",
+          "anchor": "nodetype"
+        },
+        {
+          "level": 3,
+          "text": "`UnsupportedFileError`",
+          "anchor": "unsupportedfileerror"
         },
         {
           "level": 3,
@@ -1412,28 +1422,18 @@
         },
         {
           "level": 3,
-          "text": "`Kinds`",
-          "anchor": "kinds"
+          "text": "`PlanEntryRepair`",
+          "anchor": "planentryrepair"
         },
         {
           "level": 3,
-          "text": "`ParseKind`",
-          "anchor": "parsekind"
+          "text": "`SyncDir`",
+          "anchor": "syncdir"
         },
         {
           "level": 3,
-          "text": "`EntryPath`",
-          "anchor": "entrypath"
-        },
-        {
-          "level": 3,
-          "text": "`Classify`",
-          "anchor": "classify"
-        },
-        {
-          "level": 3,
-          "text": "`IsNodeKind`",
-          "anchor": "isnodekind"
+          "text": "`IsSpecialFileType`",
+          "anchor": "isspecialfiletype"
         },
         {
           "level": 3,
@@ -1447,8 +1447,23 @@
         },
         {
           "level": 3,
-          "text": "`PlanReclassification`",
-          "anchor": "planreclassification"
+          "text": "`NodeTypes`",
+          "anchor": "nodetypes"
+        },
+        {
+          "level": 3,
+          "text": "`ParseNodeType`",
+          "anchor": "parsenodetype"
+        },
+        {
+          "level": 3,
+          "text": "`EntryPath`",
+          "anchor": "entrypath"
+        },
+        {
+          "level": 3,
+          "text": "`Classify`",
+          "anchor": "classify"
         },
         {
           "level": 3,
@@ -1457,18 +1472,18 @@
         },
         {
           "level": 3,
+          "text": "`EntryRepair.WriteEntry`",
+          "anchor": "entryrepairwriteentry"
+        },
+        {
+          "level": 3,
+          "text": "`EntryRepair.DiscardEntry`",
+          "anchor": "entryrepairdiscardentry"
+        },
+        {
+          "level": 3,
           "text": "`UnsupportedFileError.Error`",
           "anchor": "unsupportedfileerrorerror"
-        },
-        {
-          "level": 3,
-          "text": "`Reclassification.WriteEntry`",
-          "anchor": "reclassificationwriteentry"
-        },
-        {
-          "level": 3,
-          "text": "`Reclassification.DiscardEntry`",
-          "anchor": "reclassificationdiscardentry"
         }
       ]
     },
@@ -1501,11 +1516,6 @@
           "level": 3,
           "text": "`ErrOriginEmpty`",
           "anchor": "erroriginempty"
-        },
-        {
-          "level": 3,
-          "text": "`ErrRecordChanged`",
-          "anchor": "errrecordchanged"
         },
         {
           "level": 3,
@@ -1609,13 +1619,13 @@
         },
         {
           "level": 3,
-          "text": "`DB.Reclassify`",
-          "anchor": "dbreclassify"
+          "text": "`DB.QueryOlderThan`",
+          "anchor": "dbqueryolderthan"
         },
         {
           "level": 3,
-          "text": "`DB.QueryOlderThan`",
-          "anchor": "dbqueryolderthan"
+          "text": "`plannedRepair.String`",
+          "anchor": "plannedrepairstring"
         },
         {
           "level": 3,
@@ -1831,11 +1841,6 @@
           "anchor": "info"
         },
         {
-          "level": 3,
-          "text": "reclassify-records",
-          "anchor": "reclassify-records"
-        },
-        {
           "level": 2,
           "text": "capabilities",
           "anchor": "capabilities"
@@ -1859,7 +1864,7 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-10-05T15:50:10.886481+00:00",
+  "last_gen": "2026-10-05T20:31:44.614566+00:00",
   "theme": "minimal",
   "vocabulary": {
     "accepted": [
