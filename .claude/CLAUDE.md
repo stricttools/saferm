@@ -102,7 +102,7 @@ go install .                # install locally (picks up changes)
 - Go binary (GoReleaser via GitHub Actions)
 - npm wrapper: `saferemove` (in `npm/`)
 - PyPI wrapper: `saferm` (in `pypi/`)
-- Homebrew tap: `smm-h/tap/saferm`
+- Homebrew tap: `stricttools/tap/saferm`
 
 ## Tooling
 
