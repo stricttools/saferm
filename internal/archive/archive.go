@@ -49,6 +49,10 @@ var (
 	ErrArchivedContentChanged = errors.New("the source was written through while its archive entry was a link to it, so the recorded hash no longer describes the archived bytes")
 	ErrDirectoryChanged       = errors.New("the tree changed after it was archived, so the archive does not hold everything the removal would destroy")
 	ErrNotExecuted            = errors.New("the plan was never executed, so there is nothing to check the source against")
+
+	// ErrUnsupportedTarMember is a member of a tree's tar that no case of the
+	// extraction recreates.
+	ErrUnsupportedTarMember = errors.New("the archived tree holds a member saferm cannot recreate")
 )
 
 // linkFile is os.Link, indirected so a test can make the link fail.
@@ -110,7 +114,8 @@ type Plan struct {
 type member struct {
 	size    int64
 	modTime time.Time
-	regular bool
+	kind    Kind
+	node    Node // for a special file, what its tar member describes
 }
 
 // NewPlan inspects path and resolves where archiving it would put it. It
@@ -364,11 +369,14 @@ func verifySymlinkUnchanged(p *Plan) error {
 // anywhere, and os.RemoveAll destroys it along with everything else.
 //
 // So the tree is walked once more against the member list the archiving walk
-// recorded, and two findings refuse the removal: a path the tar does not have
-// at all, and a regular file whose size or mtime no longer matches what went
-// into it -- the same cheap comparison the single-file case makes before it
-// re-hashes, minus the re-hash, because re-reading a whole tree to catch a
-// same-size same-mtime rewrite would cost a second full pass over it.
+// recorded, and these findings refuse the removal: a path the tar does not
+// have at all; a path whose type of file is no longer the one that went into
+// the tar (a FIFO swapped for a regular file is a file nothing archived); a
+// regular file whose size or mtime no longer matches what went into it -- the
+// same cheap comparison the single-file case makes before it re-hashes, minus
+// the re-hash, because re-reading a whole tree to catch a same-size same-mtime
+// rewrite would cost a second full pass over it; and a special file whose mode
+// or device numbers are no longer the ones its member describes.
 //
 // A path the tar has and the tree no longer does is NOT a refusal: the archive
 // then holds more than the tree, which is the state a completed archival aims
@@ -389,15 +397,27 @@ func verifyTreeUnchanged(p *Plan) error {
 			unarchived = append(unarchived, path)
 			return nil
 		}
-		if !recorded.regular {
-			return nil
-		}
 		info, err := d.Info()
 		if err != nil {
 			return err
 		}
-		if info.Size() != recorded.size || !info.ModTime().Equal(recorded.modTime) {
+		kind, err := Classify(path, info.Mode())
+		if err != nil || kind != recorded.kind {
 			unarchived = append(unarchived, path)
+			return nil
+		}
+		switch kind {
+		case KindFile:
+			if info.Size() != recorded.size || !info.ModTime().Equal(recorded.modTime) {
+				unarchived = append(unarchived, path)
+			}
+		case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+			if nodeOf(kind, info) != recorded.node {
+				unarchived = append(unarchived, path)
+			}
+		case KindDirectory, KindSymlink:
+		default:
+			return unknownKind(kind)
 		}
 		return nil
 	})
@@ -1003,15 +1023,21 @@ func createTarZst(srcDir string, dstPath string) (map[string]member, error) {
 			return err
 		}
 
+		kind, err := Classify(path, info.Mode())
+		if err != nil {
+			return err
+		}
+
 		// Recorded before the content is written, not after: a file that is
 		// rewritten WHILE it is being copied gets a member whose size and mtime
 		// are the pre-copy ones, so the check on the way back refuses. Recording
 		// afterwards would instead make the refusal disappear for exactly the
 		// case that needs it.
-		members[path] = member{size: info.Size(), modTime: info.ModTime(), regular: info.Mode().IsRegular()}
+		m := member{size: info.Size(), modTime: info.ModTime(), kind: kind}
 
-		// Handle symlinks.
-		if d.Type()&os.ModeSymlink != 0 {
+		switch kind {
+		case KindSymlink:
+			members[path] = m
 			linkTarget, err := os.Readlink(path)
 			if err != nil {
 				return err
@@ -1024,6 +1050,30 @@ func createTarZst(srcDir string, dstPath string) (map[string]member, error) {
 				ModTime:  info.ModTime(),
 			}
 			return tarWriter.WriteHeader(header)
+
+		case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+			m.node = nodeOf(kind, info)
+			members[path] = m
+			header, err := nodeTarHeader(m.node, archivePath, info.ModTime())
+			if err != nil {
+				return err
+			}
+			return tarWriter.WriteHeader(header)
+
+		case KindDirectory:
+			members[path] = m
+			header, err := tar.FileInfoHeader(info, "")
+			if err != nil {
+				return err
+			}
+			header.Name = archivePath
+			return tarWriter.WriteHeader(header)
+
+		case KindFile:
+			members[path] = m
+
+		default:
+			return unknownKind(kind)
 		}
 
 		header, err := tar.FileInfoHeader(info, "")
@@ -1034,10 +1084,6 @@ func createTarZst(srcDir string, dstPath string) (map[string]member, error) {
 
 		if err := tarWriter.WriteHeader(header); err != nil {
 			return err
-		}
-
-		if d.IsDir() || !info.Mode().IsRegular() {
-			return nil
 		}
 
 		f, _, err := openRegular(path)
@@ -1146,7 +1192,19 @@ func extractTarZst(srcPath string, dstDir string) ([]string, error) {
 				return created, err
 			}
 			created = append(created, target)
+		case tar.TypeFifo, tar.TypeChar, tar.TypeBlock:
+			if err := extractNode(header, target, &created); err != nil {
+				return created, err
+			}
 		case tar.TypeReg:
+			if _, isNode, err := nodeFromTarHeader(header); err != nil {
+				return created, err
+			} else if isNode {
+				if err := extractNode(header, target, &created); err != nil {
+					return created, err
+				}
+				continue
+			}
 			if err := mkdirTracked(filepath.Dir(target), 0755, &created); err != nil {
 				return created, err
 			}
@@ -1160,10 +1218,34 @@ func extractTarZst(srcPath string, dstDir string) ([]string, error) {
 				return created, err
 			}
 			f.Close()
+		default:
+			// A member type the archiving walk never writes. Skipping it would
+			// report a restore that left part of the tree behind.
+			return created, fmt.Errorf("%w: %s has tar typeflag %q", ErrUnsupportedTarMember, header.Name, header.Typeflag)
 		}
 	}
 
 	return created, nil
+}
+
+// extractNode recreates the special file a tar member describes, through the
+// same codec and the same [makeNode] a top-level node's restore uses.
+func extractNode(header *tar.Header, target string, created *[]string) error {
+	n, isNode, err := nodeFromTarHeader(header)
+	if err != nil {
+		return err
+	}
+	if !isNode {
+		return fmt.Errorf("%w: %s is not a special file", ErrUnsupportedTarMember, header.Name)
+	}
+	if err := mkdirTracked(filepath.Dir(target), 0755, created); err != nil {
+		return err
+	}
+	if err := makeNode(target, n); err != nil {
+		return err
+	}
+	*created = append(*created, target)
+	return nil
 }
 
 // mkdirTracked is os.MkdirAll that appends every directory it actually creates

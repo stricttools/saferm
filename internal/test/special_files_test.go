@@ -195,3 +195,38 @@ func TestUndelete_ADeviceWithoutPrivilegeFailsAndKeepsTheEntry(t *testing.T) {
 	}
 	assertInfoType(t, home, uuid, "character-device")
 }
+
+// A tree holding a FIFO and a socket is archived without reading either, and
+// the undelete that reports success brings both back.
+func TestDelete_ATreeWithSpecialFilesRoundTrips(t *testing.T) {
+	home := testutil.SetupTestEnv(t)
+	tree := filepath.Join(t.TempDir(), "tree")
+	if err := os.MkdirAll(tree, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	makeFIFO(t, filepath.Join(tree, "pipe"), 0o640)
+	makeSocket(t, filepath.Join(tree, "sk"), 0o700)
+
+	stdout, stderr, code := runSafermWithin(t, specialLimit, home, nil,
+		"delete", "-r", "--on-error", "abort", "--description", "special tree", tree)
+	if code != 0 {
+		t.Fatalf("delete: exit %d: %s", code, stderr)
+	}
+	uuid := parseArchivedLines(t, stdout)[0][1]
+	if _, err := os.Lstat(tree); !os.IsNotExist(err) {
+		t.Fatalf("the tree is still there: %v", err)
+	}
+	if _, stderr, code := runSafermWithin(t, specialLimit, home, nil, "undelete", uuid); code != 0 {
+		t.Fatalf("undelete: exit %d: %s", code, stderr)
+	}
+	for name, want := range map[string]fs.FileMode{"pipe": fs.ModeNamedPipe | 0o640, "sk": fs.ModeSocket | 0o700} {
+		info, err := os.Lstat(filepath.Join(tree, name))
+		if err != nil {
+			t.Errorf("%s was not restored: %v", name, err)
+			continue
+		}
+		if info.Mode() != want {
+			t.Errorf("%s restored as %s, want %s", name, info.Mode(), want)
+		}
+	}
+}
