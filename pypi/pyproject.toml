@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "saferm"
@@ -24,7 +24,7 @@ Repository = "https://github.com/stricttools/saferm"
 Issues = "https://github.com/stricttools/saferm/issues"
 Changelog = "https://github.com/stricttools/saferm/blob/main/CHANGELOG.md"
 
-[tool.setuptools]
+[tool.hatch.build.targets.wheel]
 packages = ["saferm"]
 
 [project.scripts]
