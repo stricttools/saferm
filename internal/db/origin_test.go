@@ -163,16 +163,16 @@ func TestInsert_VersionWithoutNameIsRejected(t *testing.T) {
 	}
 }
 
-// TestMigratedDatabase_RefusesPreKindWrites pins the other side of migration 4:
-// a binary from before the kind column writes is_directory, which the rebuilt
+// TestMigratedDatabase_RefusesPreNodeTypeWrites pins the other side of migration 4:
+// a binary from before the node type column writes is_directory, which the rebuilt
 // table no longer has, so its insert fails outright instead of writing a row
-// whose kind nothing states. saferm is pre-stable and keeps no second spelling
-// of a record's kind for older writers.
+// whose node type nothing states. saferm is pre-stable and keeps no second spelling
+// of a record's node type for older writers.
 //
 // The old binary's SQL is what is exercised here rather than the old binary
 // itself: building a previous release inside the suite would make every run
 // depend on the network and on a tag that keeps moving.
-func TestMigratedDatabase_RefusesPreKindWrites(t *testing.T) {
+func TestMigratedDatabase_RefusesPreNodeTypeWrites(t *testing.T) {
 	dbPath := openLegacyDB(t)
 
 	d, err := Open(dbPath, nil)
@@ -192,7 +192,7 @@ func TestMigratedDatabase_RefusesPreKindWrites(t *testing.T) {
 		time.Now().Format(time.RFC3339),
 	)
 	if err == nil {
-		t.Fatal("a pre-kind insert into the migrated database succeeded and wrote a row whose kind nothing states")
+		t.Fatal("a pre-node-type insert into the migrated database succeeded and wrote a row whose node type nothing states")
 	}
 }
 

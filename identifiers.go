@@ -12,7 +12,7 @@ import (
 
 // The identifier order, pinned in one place.
 //
-// Three kinds of string can name an archived record, and they are read in this
+// Three forms of string can name an archived record, and they are read in this
 // order:
 //
 //  1. a record UUID -- 36 characters, hyphenated hex in 8-4-4-4-12 groups.
@@ -29,11 +29,11 @@ var (
 	digitsShaped = regexp.MustCompile(`^[0-9]+$`)
 )
 
-// identifierKind is what an identifier argument turned out to be.
-type identifierKind int
+// identifierForm is what an identifier argument turned out to be.
+type identifierForm int
 
 const (
-	identifierUUID identifierKind = iota
+	identifierUUID identifierForm = iota
 	identifierID
 	identifierPath
 )
@@ -71,8 +71,8 @@ func reportNoSuchRecord(target string) {
 	fmt.Fprintf(os.Stderr, "error: no record with ID %s\n", target)
 }
 
-// classifyIdentifier decides which of the three kinds a target string is.
-func classifyIdentifier(target string) identifierKind {
+// classifyIdentifier decides which of the three forms a target string is.
+func classifyIdentifier(target string) identifierForm {
 	switch {
 	case uuidShaped.MatchString(target):
 		return identifierUUID

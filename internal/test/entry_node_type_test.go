@@ -16,7 +16,7 @@ import (
 	"github.com/stricttools/saferm/internal/testutil"
 )
 
-// recordFileOverEntry writes a record of kind file whose archive entry is
+// recordFileOverEntry writes a record of node type file whose archive entry is
 // whatever makeEntry puts at <uuid>: the shape a FIFO deleted by a saferm that
 // read it, or a symlink deleted before symlinks were recognized, left behind.
 func recordFileOverEntry(t *testing.T, home string, makeEntry func(path string) error) string {
@@ -29,8 +29,8 @@ func recordFileOverEntry(t *testing.T, home string, makeEntry func(path string) 
 	d := openArchive(t, home)
 	if _, err := d.Insert(&db.DeletionRecord{
 		UUID: uuid, OriginalPath: filepath.Join(t.TempDir(), "orig"), OriginalName: "orig",
-		Hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-		Kind: archive.KindFile, DeletedAt: time.Now(), Description: "contradicted",
+		Hash:     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		NodeType: archive.NodeTypeFile, DeletedAt: time.Now(), Description: "contradicted",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -38,9 +38,9 @@ func recordFileOverEntry(t *testing.T, home string, makeEntry func(path string) 
 	return uuid
 }
 
-// An entry whose type contradicts the record's kind is reported as corrupt by
+// An entry whose type contradicts the record's node type is reported as corrupt by
 // info, never as restorable, and undelete refuses it without touching it.
-func TestInfoAndUndelete_ReportAnEntryThatContradictsItsKindAsCorrupt(t *testing.T) {
+func TestInfoAndUndelete_ReportAnEntryThatContradictsItsNodeTypeAsCorrupt(t *testing.T) {
 	for label, makeEntry := range map[string]func(string) error{
 		"a FIFO":    func(p string) error { return syscall.Mkfifo(p, 0o644) },
 		"a symlink": func(p string) error { return os.Symlink("../../scripts/hooks/pre-push", p) },
@@ -84,7 +84,7 @@ func TestInfoAndUndelete_ReportAnEntryThatContradictsItsKindAsCorrupt(t *testing
 }
 
 // reclassify-records turns a FIFO and a symlink that older saferm versions
-// recorded as files into records of their real kinds, after a dry run that
+// recorded as files into records of their real node types, after a dry run that
 // changes nothing, and both are then restorable as what they were.
 func TestReclassifyRecords_MakesContradictedRecordsRestorable(t *testing.T) {
 	home := testutil.SetupTestEnv(t)

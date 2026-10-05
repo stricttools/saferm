@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stricttools/strictcli/go/strictcli"
 	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // listRow is one row of `list`'s machine payload: the table's own columns, plus
@@ -22,7 +22,7 @@ type listRow struct {
 	UUID      string `json:"uuid"`
 	Path      string `json:"path"`
 	Size      int64  `json:"size"`
-	Kind      string `json:"kind"`
+	NodeType  string `json:"node_type"`
 	DeletedAt string `json:"deleted_at"`
 	Status    string `json:"status"`
 }
@@ -35,11 +35,11 @@ var listRowSchema = map[string]interface{}{
 		"uuid":       map[string]interface{}{"type": "string"},
 		"path":       map[string]interface{}{"type": "string"},
 		"size":       map[string]interface{}{"type": "integer"},
-		"kind":       map[string]interface{}{"type": "string", "enum": kindEnum()},
+		"node_type":  map[string]interface{}{"type": "string", "enum": nodeTypeEnum()},
 		"deleted_at": map[string]interface{}{"type": "string"},
 		"status":     map[string]interface{}{"type": "string", "enum": []interface{}{statusArchived, statusRestored, statusPurged}},
 	},
-	"required":             []interface{}{"id", "uuid", "path", "size", "kind", "deleted_at", "status"},
+	"required":             []interface{}{"id", "uuid", "path", "size", "node_type", "deleted_at", "status"},
 	"additionalProperties": false,
 }
 
@@ -164,7 +164,7 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 		path := rec.OriginalPath
 
 		// Append type indicator for non-regular files.
-		typeIndicator := kindIndicator(rec.Kind)
+		typeIndicator := nodeTypeMarker(rec.NodeType)
 
 		if len(path)+len(typeIndicator) > 40 {
 			maxPath := 40 - len(typeIndicator)
@@ -233,7 +233,7 @@ func listRows(records []*db.DeletionRecord) []listRow {
 			UUID:      rec.UUID,
 			Path:      rec.OriginalPath,
 			Size:      rec.Size,
-			Kind:      recordKind(rec),
+			NodeType:  recordNodeType(rec),
 			DeletedAt: rec.DeletedAt.Format(time.RFC3339),
 			Status:    listStatus(rec),
 		})
@@ -241,24 +241,24 @@ func listRows(records []*db.DeletionRecord) []listRow {
 	return rows
 }
 
-// kindIndicator is the marker the table appends to a path to say what kind of
-// thing was archived there; a regular file carries none.
-func kindIndicator(k archive.Kind) string {
+// nodeTypeMarker is the marker the table appends to a path to say what type of
+// file was archived there; a regular file carries none.
+func nodeTypeMarker(k archive.NodeType) string {
 	switch k {
-	case archive.KindFile:
+	case archive.NodeTypeFile:
 		return ""
-	case archive.KindDirectory:
+	case archive.NodeTypeDirectory:
 		return " [dir]"
-	case archive.KindSymlink:
+	case archive.NodeTypeSymlink:
 		return " [sym]"
-	case archive.KindFIFO:
+	case archive.NodeTypeFIFO:
 		return " [fifo]"
-	case archive.KindSocket:
-		return " [sock]"
-	case archive.KindCharacterDevice:
-		return " [chr]"
-	case archive.KindBlockDevice:
-		return " [blk]"
+	case archive.NodeTypeSocket:
+		return " [socket]"
+	case archive.NodeTypeCharacterDevice:
+		return " [character-device]"
+	case archive.NodeTypeBlockDevice:
+		return " [block-device]"
 	}
-	panic(fmt.Sprintf("kindIndicator: unknown archive kind %q", string(k)))
+	panic(fmt.Sprintf("nodeTypeMarker: unknown node type %q", string(k)))
 }

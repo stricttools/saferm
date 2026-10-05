@@ -133,7 +133,7 @@ func TestCommandClassificationIsPinned(t *testing.T) {
 //     rather than as the table's rounded sizes.
 //   - capabilities -- the probe itself, which is only useful to a machine.
 //   - reclassify-records -- the records it changed (or under --dry-run would),
-//     so a program can tell which of its handles now name another kind.
+//     so a program can tell which of its handles now name another node type.
 //   - purge -- deliberately OUTSIDE. It is the one irreversible operation and
 //     the one that asks for consent; nothing should be driving it from a
 //     parsed document, and a payload would be the first step toward something

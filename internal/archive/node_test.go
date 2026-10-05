@@ -13,32 +13,32 @@ import (
 	"time"
 )
 
-func TestNodeDescriptor_RoundTripsEveryNodeKind(t *testing.T) {
+func TestNodeDescriptor_RoundTripsEverySpecialFileType(t *testing.T) {
 	for _, n := range []Node{
-		{Kind: KindFIFO, Perm: 0o640},
-		{Kind: KindSocket, Perm: 0o755 | fs.ModeSticky},
-		{Kind: KindCharacterDevice, Perm: 0o666, Major: 1, Minor: 3},
-		{Kind: KindBlockDevice, Perm: 0o660 | fs.ModeSetgid, Major: 259, Minor: 1 << 20},
+		{NodeType: NodeTypeFIFO, Perm: 0o640},
+		{NodeType: NodeTypeSocket, Perm: 0o755 | fs.ModeSticky},
+		{NodeType: NodeTypeCharacterDevice, Perm: 0o666, Major: 1, Minor: 3},
+		{NodeType: NodeTypeBlockDevice, Perm: 0o660 | fs.ModeSetgid, Major: 259, Minor: 1 << 20},
 	} {
 		got, err := DecodeNode(EncodeNode(n))
 		if err != nil {
-			t.Fatalf("%s: %v", n.Kind, err)
+			t.Fatalf("%s: %v", n.NodeType, err)
 		}
 		if got != n {
-			t.Errorf("%s: decoded %+v, want %+v", n.Kind, got, n)
+			t.Errorf("%s: decoded %+v, want %+v", n.NodeType, got, n)
 		}
 	}
 }
 
 func TestNodeDescriptor_RefusesAnythingElse(t *testing.T) {
-	valid := string(EncodeNode(Node{Kind: KindFIFO, Perm: 0o644}))
+	valid := string(EncodeNode(Node{NodeType: NodeTypeFIFO, Perm: 0o644}))
 	for label, data := range map[string]string{
 		"empty":                  "",
 		"no trailing newline":    strings.TrimSuffix(valid, "\n"),
 		"extra line":             valid + "extra\n",
 		"wrong header":           strings.Replace(valid, "saferm-node 1", "saferm-node 2", 1),
-		"not a node kind":        strings.Replace(valid, "kind fifo", "kind file", 1),
-		"unknown kind":           strings.Replace(valid, "kind fifo", "kind door", 1),
+		"not a special file":     strings.Replace(valid, "node_type fifo", "node_type file", 1),
+		"unknown node type":      strings.Replace(valid, "node_type fifo", "node_type door", 1),
 		"mode not octal":         strings.Replace(valid, "mode 0644", "mode 0698", 1),
 		"mode beyond permission": strings.Replace(valid, "mode 0644", "mode 10644", 1),
 		"fifo with a device":     strings.Replace(valid, "major 0", "major 8", 1),
@@ -63,7 +63,7 @@ func TestClassify_RefusesAnIrregularFileByName(t *testing.T) {
 
 // A device is archived as a descriptor without being opened: /dev/null is the
 // one device every test machine has, and reading it would return nothing, so
-// what this checks is the descriptor -- its kind and device numbers -- and that
+// what this checks is the descriptor -- its node type and device numbers -- and that
 // the source is untouched (Execute never removes it).
 func TestNode_ADeviceIsArchivedAsADescriptor(t *testing.T) {
 	archiveDir := filepath.Join(t.TempDir(), "archive")
@@ -71,14 +71,14 @@ func TestNode_ADeviceIsArchivedAsADescriptor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Kind != KindCharacterDevice || !strings.HasSuffix(p.Dest, ".node") {
-		t.Fatalf("plan kind %q, entry %s", p.Kind, p.Dest)
+	if p.NodeType != NodeTypeCharacterDevice || !strings.HasSuffix(p.Dest, ".node") {
+		t.Fatalf("plan node type %q, entry %s", p.NodeType, p.Dest)
 	}
 	result, err := Execute(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Kind != KindCharacterDevice || result.Size != 0 || result.Hash == "" {
+	if result.NodeType != NodeTypeCharacterDevice || result.Size != 0 || result.Hash == "" {
 		t.Errorf("result %+v", result)
 	}
 	data, err := os.ReadFile(p.Dest)
@@ -90,7 +90,7 @@ func TestNode_ADeviceIsArchivedAsADescriptor(t *testing.T) {
 		t.Fatal(err)
 	}
 	major, minor := deviceNumbers(mustLstat(t, "/dev/null"))
-	if n.Kind != KindCharacterDevice || n.Major != major || n.Minor != minor {
+	if n.NodeType != NodeTypeCharacterDevice || n.Major != major || n.Minor != minor {
 		t.Errorf("descriptor %+v, want a character device %d,%d", n, major, minor)
 	}
 	if _, err := os.Lstat("/dev/null"); err != nil {
@@ -114,7 +114,7 @@ func TestRestoreNode_ADeviceWithoutPrivilegeIsAHardErrorThatKeepsTheEntry(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	rp := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmp, "null"), KindCharacterDevice, "")
+	rp := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmp, "null"), NodeTypeCharacterDevice, "")
 	if err := VerifyEntry(rp, result.Hash); err != nil {
 		t.Fatalf("the descriptor does not verify: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestNode_AFIFORoundTripsThroughArchiveAndRestore(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	rp := NewRestorePlan(result.UUID, archiveDir, fifo, KindFIFO, "")
+	rp := NewRestorePlan(result.UUID, archiveDir, fifo, NodeTypeFIFO, "")
 	if err := VerifyEntry(rp, result.Hash); err != nil {
 		t.Fatal(err)
 	}
@@ -187,16 +187,16 @@ func TestRemoveSource_RefusesANodeThatChangedAfterItWasArchived(t *testing.T) {
 	}
 }
 
-// A descriptor of another kind than the record names is a corrupt entry, and
+// A descriptor of another node type than the record names is a corrupt entry, and
 // EntryPresent -- which every restore runs -- says so before anything is made.
-func TestEntryPresent_RefusesADescriptorOfAnotherKind(t *testing.T) {
+func TestEntryPresent_RefusesADescriptorOfAnotherNodeType(t *testing.T) {
 	archiveDir := t.TempDir()
 	uuid := NewUUID()
-	entry := EntryPath(archiveDir, uuid, KindSocket)
-	if err := os.WriteFile(entry, EncodeNode(Node{Kind: KindFIFO, Perm: 0o644}), 0o600); err != nil {
+	entry := EntryPath(archiveDir, uuid, NodeTypeSocket)
+	if err := os.WriteFile(entry, EncodeNode(Node{NodeType: NodeTypeFIFO, Perm: 0o644}), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	rp := NewRestorePlan(uuid, archiveDir, filepath.Join(archiveDir, "dest"), KindSocket, "")
+	rp := NewRestorePlan(uuid, archiveDir, filepath.Join(archiveDir, "dest"), NodeTypeSocket, "")
 	if err := EntryPresent(rp); !errors.Is(err, ErrEntryCorrupt) {
 		t.Fatalf("got %v, want ErrEntryCorrupt", err)
 	}

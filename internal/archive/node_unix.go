@@ -20,32 +20,32 @@ import (
 func makeNode(path string, n Node) error {
 	perm := unixPerm(n.Perm)
 	var err error
-	switch n.Kind {
-	case KindFIFO:
+	switch n.NodeType {
+	case NodeTypeFIFO:
 		err = unix.Mkfifo(path, perm)
-	case KindSocket:
+	case NodeTypeSocket:
 		if !socketNodesSupported {
 			return fmt.Errorf("recreating the socket %s: %w on %s", path, ErrNodeUnsupported, runtime.GOOS)
 		}
 		err = unix.Mknod(path, unix.S_IFSOCK|perm, 0)
-	case KindCharacterDevice:
+	case NodeTypeCharacterDevice:
 		err = unix.Mknod(path, unix.S_IFCHR|perm, int(unix.Mkdev(n.Major, n.Minor)))
-	case KindBlockDevice:
+	case NodeTypeBlockDevice:
 		err = unix.Mknod(path, unix.S_IFBLK|perm, int(unix.Mkdev(n.Major, n.Minor)))
-	case KindFile, KindDirectory, KindSymlink:
-		return fmt.Errorf("%s is not a special-file kind", n.Kind)
+	case NodeTypeFile, NodeTypeDirectory, NodeTypeSymlink:
+		return fmt.Errorf("%s is not a special-file node type", n.NodeType)
 	default:
-		return unknownKind(n.Kind)
+		return unknownNodeType(n.NodeType)
 	}
 	if err != nil {
-		if isDeviceKind(n.Kind) && (errors.Is(err, unix.EPERM) || errors.Is(err, unix.EACCES)) {
-			return fmt.Errorf("recreating the %s %s (%d,%d): %w (%v)", n.Kind, path, n.Major, n.Minor, ErrNodeNeedsPrivilege, err)
+		if isDeviceType(n.NodeType) && (errors.Is(err, unix.EPERM) || errors.Is(err, unix.EACCES)) {
+			return fmt.Errorf("recreating the %s %s (%d,%d): %w (%v)", n.NodeType, path, n.Major, n.Minor, ErrNodeNeedsPrivilege, err)
 		}
-		return fmt.Errorf("recreating the %s %s: %w", n.Kind, path, err)
+		return fmt.Errorf("recreating the %s %s: %w", n.NodeType, path, err)
 	}
 	if err := os.Chmod(path, n.Perm); err != nil {
 		os.Remove(path)
-		return fmt.Errorf("setting the mode of the recreated %s %s: %w", n.Kind, path, err)
+		return fmt.Errorf("setting the mode of the recreated %s %s: %w", n.NodeType, path, err)
 	}
 	return nil
 }

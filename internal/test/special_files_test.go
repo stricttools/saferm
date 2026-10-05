@@ -157,13 +157,13 @@ func archiveDescriptor(t *testing.T, home, path string, n archive.Node) string {
 	sum := sha256.Sum256(descriptor)
 	uuid := archive.NewUUID()
 	archiveDir := filepath.Join(home, ".saferm", "archive")
-	if err := os.WriteFile(archive.EntryPath(archiveDir, uuid, n.Kind), descriptor, 0o600); err != nil {
+	if err := os.WriteFile(archive.EntryPath(archiveDir, uuid, n.NodeType), descriptor, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	d := openArchive(t, home)
 	if _, err := d.Insert(&db.DeletionRecord{
 		UUID: uuid, OriginalPath: path, OriginalName: filepath.Base(path), Size: 0,
-		Hash: hex.EncodeToString(sum[:]), Kind: n.Kind, DeletedAt: time.Now(), Description: "a device",
+		Hash: hex.EncodeToString(sum[:]), NodeType: n.NodeType, DeletedAt: time.Now(), Description: "a device",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestUndelete_ADeviceWithoutPrivilegeFailsAndKeepsTheEntry(t *testing.T) {
 	}
 	home := testutil.SetupTestEnv(t)
 	dest := filepath.Join(t.TempDir(), "null")
-	uuid := archiveDescriptor(t, home, dest, archive.Node{Kind: archive.KindCharacterDevice, Perm: 0o666, Major: 1, Minor: 3})
+	uuid := archiveDescriptor(t, home, dest, archive.Node{NodeType: archive.NodeTypeCharacterDevice, Perm: 0o666, Major: 1, Minor: 3})
 	assertInfoType(t, home, uuid, "character-device")
 
 	_, stderr, code := runSafermWithin(t, specialLimit, home, nil, "undelete", uuid)

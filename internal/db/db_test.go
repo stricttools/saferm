@@ -29,7 +29,7 @@ func makeRecord(uuid string, path string, deletedAt time.Time) *DeletionRecord {
 		OriginalName: filepath.Base(path),
 		Size:         1024,
 		Hash:         "abc123",
-		Kind:         archive.KindFile,
+		NodeType:     archive.NodeTypeFile,
 		DeletedAt:    deletedAt,
 		Command:      "rm",
 		Description:  "test deletion",
@@ -127,7 +127,7 @@ func TestInsertAndQueryByID(t *testing.T) {
 		OriginalName: "file.txt",
 		Size:         4096,
 		Hash:         "sha256:deadbeef",
-		Kind:         archive.KindDirectory,
+		NodeType:     archive.NodeTypeDirectory,
 		DeletedAt:    now,
 		Command:      "rm -rf",
 		Description:  "deleted a directory",
@@ -165,8 +165,8 @@ func TestInsertAndQueryByID(t *testing.T) {
 	if got.Hash != "sha256:deadbeef" {
 		t.Errorf("Hash = %q, want %q", got.Hash, "sha256:deadbeef")
 	}
-	if got.Kind != archive.KindDirectory {
-		t.Errorf("Kind = %q, want directory", got.Kind)
+	if got.NodeType != archive.NodeTypeDirectory {
+		t.Errorf("NodeType = %q, want directory", got.NodeType)
 	}
 	if !got.DeletedAt.Equal(now) {
 		t.Errorf("DeletedAt = %v, want %v", got.DeletedAt, now)

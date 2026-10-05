@@ -321,7 +321,7 @@ type undeletePayload struct {
 	UUID         string `json:"uuid"`
 	OriginalPath string `json:"original_path"`
 	RestoredTo   string `json:"restored_to"`
-	Kind         string `json:"kind"`
+	NodeType     string `json:"node_type"`
 	Overwrote    bool   `json:"overwrote"`
 }
 
@@ -359,8 +359,8 @@ func TestMachineSurface_UndeleteNamesWhatWentWhere(t *testing.T) {
 	if payload.RestoredTo != dest {
 		t.Errorf("restored_to = %q, want %q", payload.RestoredTo, dest)
 	}
-	if payload.Kind != "file" {
-		t.Errorf("kind = %q, want file", payload.Kind)
+	if payload.NodeType != "file" {
+		t.Errorf("node type = %q, want file", payload.NodeType)
 	}
 	if payload.Overwrote {
 		t.Error("nothing was standing at the destination, so nothing was overwritten")
@@ -399,8 +399,8 @@ func TestMachineSurface_UndeletePreviewNamesTheDestination(t *testing.T) {
 	if payload.RestoredTo != tree {
 		t.Errorf("restored_to = %q, want %q", payload.RestoredTo, tree)
 	}
-	if payload.Kind != "directory" {
-		t.Errorf("kind = %q, want directory", payload.Kind)
+	if payload.NodeType != "directory" {
+		t.Errorf("node type = %q, want directory", payload.NodeType)
 	}
 	if _, err := os.Lstat(tree); !os.IsNotExist(err) {
 		t.Errorf("a previewed restore recreated %s for real: %v", tree, err)
@@ -442,7 +442,7 @@ type listRow struct {
 	UUID      string `json:"uuid"`
 	Path      string `json:"path"`
 	Size      int64  `json:"size"`
-	Kind      string `json:"kind"`
+	NodeType  string `json:"node_type"`
 	DeletedAt string `json:"deleted_at"`
 	Status    string `json:"status"`
 }
@@ -486,8 +486,8 @@ func TestMachineSurface_ListCarriesTheRows(t *testing.T) {
 	if !ok {
 		t.Fatalf("the payload must name the archived file, got: %s", env.Payload)
 	}
-	if fileRow.Kind != "file" {
-		t.Errorf("kind = %q, want file", fileRow.Kind)
+	if fileRow.NodeType != "file" {
+		t.Errorf("node type = %q, want file", fileRow.NodeType)
 	}
 	if fileRow.Status != "archived" {
 		t.Errorf("status = %q, want archived", fileRow.Status)
@@ -498,8 +498,8 @@ func TestMachineSurface_ListCarriesTheRows(t *testing.T) {
 	if _, err := time.Parse(time.RFC3339, fileRow.DeletedAt); err != nil {
 		t.Errorf("deleted_at must be a timestamp, got %q (%v)", fileRow.DeletedAt, err)
 	}
-	if byPath[tree].Kind != "directory" {
-		t.Errorf("the tree's kind = %q, want directory", byPath[tree].Kind)
+	if byPath[tree].NodeType != "directory" {
+		t.Errorf("the tree's node type = %q, want directory", byPath[tree].NodeType)
 	}
 
 	// A restored record's row says so, and --all is what shows it at all.
@@ -561,7 +561,7 @@ type infoPayload struct {
 	OriginalName  string  `json:"original_name"`
 	Size          int64   `json:"size"`
 	Hash          string  `json:"hash"`
-	Kind          string  `json:"kind"`
+	NodeType      string  `json:"node_type"`
 	SymlinkTarget *string `json:"symlink_target"`
 	DeletedAt     string  `json:"deleted_at"`
 	Status        string  `json:"status"`
@@ -612,8 +612,8 @@ func TestMachineSurface_InfoCarriesTheRecord(t *testing.T) {
 	if payload.OriginalName != "inspected.txt" {
 		t.Errorf("original_name = %q", payload.OriginalName)
 	}
-	if payload.Kind != "file" || payload.Hash == "" {
-		t.Errorf("kind = %q, hash = %q", payload.Kind, payload.Hash)
+	if payload.NodeType != "file" || payload.Hash == "" {
+		t.Errorf("node type = %q, hash = %q", payload.NodeType, payload.Hash)
 	}
 	if payload.Status != "restorable" {
 		t.Errorf("status = %q, want restorable", payload.Status)
@@ -740,13 +740,13 @@ var pinnedFeatures = []string{
 	"trace-origin",
 	"usage-report",
 	"uuid-handles",
-	"kind-file",
-	"kind-directory",
-	"kind-symlink",
-	"kind-fifo",
-	"kind-socket",
-	"kind-character-device",
-	"kind-block-device",
+	"node-type-file",
+	"node-type-directory",
+	"node-type-symlink",
+	"node-type-fifo",
+	"node-type-socket",
+	"node-type-character-device",
+	"node-type-block-device",
 }
 
 func TestMachineSurface_CapabilitiesNamesTheFeaturesShipped(t *testing.T) {

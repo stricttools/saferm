@@ -419,7 +419,7 @@ func (r *deleteRun) archiveOne(file string) (archived bool, code int) {
 		OriginalName:  filepath.Base(absPath),
 		Size:          result.Size,
 		Hash:          result.Hash,
-		Kind:          result.Kind,
+		NodeType:      result.NodeType,
 		DeletedAt:     time.Now(),
 		Command:       r.command,
 		Description:   r.description,
@@ -428,7 +428,7 @@ func (r *deleteRun) archiveOne(file string) (archived bool, code int) {
 		OriginVersion: r.originVersion,
 		GroupID:       &r.groupID,
 	}
-	if result.Kind == archive.KindSymlink {
+	if result.NodeType == archive.NodeTypeSymlink {
 		rec.SymlinkTarget = &result.SymlinkTarget
 	}
 
@@ -459,7 +459,7 @@ func (r *deleteRun) archiveOne(file string) (archived bool, code int) {
 
 	// Stage removal in git index if the file was tracked.
 	if r.updateGitIndex && r.gitRoot != "" && gitutil.IsGitTracked(absPath) {
-		if err := gitutil.GitRmCached(absPath, result.Kind == archive.KindDirectory); err != nil {
+		if err := gitutil.GitRmCached(absPath, result.NodeType == archive.NodeTypeDirectory); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: git rm --cached failed for %s: %s\n", file, err)
 		} else if r.verbose {
 			say(r.ctx, "Staged removal in git: %s\n", file)
@@ -576,7 +576,7 @@ func describeUnremovedSource(absPath string, plan *archive.Plan, id int64, uuid 
 // archive.Execute carries the act; the dry-mode branch in the caller is what
 // keeps the two from ever both happening.
 //
-// Every kind is described the same way, as the two things that actually happen:
+// Every node type is described the same way, as the two things that actually happen:
 // an archive entry appears, and the source goes. The file case used to mint
 // `rename`, which was true when a file was archived by renaming it and has not
 // been since. A rename says one atomic move whose destination then holds the
@@ -597,7 +597,7 @@ func recordArchival(ctx *strictcli.Context, fx *strictcli.Effects, plan *archive
 		return errors.New("recordArchival describes an archival for a preview and must not run outside --dry-run")
 	}
 
-	// What the entry will contain, per kind:
+	// What the entry will contain, per node type:
 	//
 	//   - A symlink's entry IS its target path written out, so the real content
 	//     is right here.
@@ -628,21 +628,21 @@ func recordArchival(ctx *strictcli.Context, fx *strictcli.Effects, plan *archive
 }
 
 // previewEntryContent is what a preview declares the archive entry will hold,
-// per kind, as [recordArchival] describes.
+// per node type, as [recordArchival] describes.
 func previewEntryContent(plan *archive.Plan) ([]byte, error) {
-	switch plan.Kind {
-	case archive.KindSymlink:
+	switch plan.NodeType {
+	case archive.NodeTypeSymlink:
 		return []byte(plan.SymlinkTarget), nil
-	case archive.KindFile:
+	case archive.NodeTypeFile:
 		info, err := os.Lstat(plan.Source)
 		if err != nil {
 			return nil, err
 		}
 		return make([]byte, info.Size()), nil
-	case archive.KindDirectory:
+	case archive.NodeTypeDirectory:
 		return nil, nil
-	case archive.KindFIFO, archive.KindSocket, archive.KindCharacterDevice, archive.KindBlockDevice:
+	case archive.NodeTypeFIFO, archive.NodeTypeSocket, archive.NodeTypeCharacterDevice, archive.NodeTypeBlockDevice:
 		return plan.NodeDescriptor(), nil
 	}
-	return nil, fmt.Errorf("previewing the archival of %s: unknown archive kind %q", plan.Source, string(plan.Kind))
+	return nil, fmt.Errorf("previewing the archival of %s: unknown node type %q", plan.Source, string(plan.NodeType))
 }

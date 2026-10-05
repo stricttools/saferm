@@ -416,7 +416,7 @@ func TestRemoveSource_RefusesAReplacedSymlink(t *testing.T) {
 // legitimately select that row and destroy its blob while the archival is
 // still inside its window. Removing the source afterwards would leave no copy
 // of the content anywhere -- the one outcome saferm exists to make impossible.
-// Every kind is checked, because every kind can have its entry removed.
+// Every node type is checked, because every node type can have its entry removed.
 
 // directoryPlan archives a small tree and returns the plan with the window
 // open: the .tar.zst exists, the tree is still there.
@@ -459,7 +459,7 @@ func symlinkPlan(t *testing.T, dir, name, target string) *Plan {
 }
 
 // The linked file's entry: the identity check covered this one already, but it
-// belongs beside the other three so all four kinds are pinned in one place.
+// belongs beside the other three so all four node types are pinned in one place.
 func TestRemoveSource_RefusesWhenALinkedEntryIsGone(t *testing.T) {
 	dir := t.TempDir()
 	plan := linkedFilePlan(t, dir, "target.txt", "the archived bytes")

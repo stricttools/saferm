@@ -33,7 +33,7 @@ var ErrOriginEmpty = errors.New("origin fields must be absent or non-empty")
 // recordColumns is the column list every read of a deletion record selects, in
 // the order scanOne scans them. It is spelled once because a query that drifts
 // from the scanner produces a mismatch at run time, not at compile time.
-const recordColumns = `id, uuid, original_path, original_name, size, hash, kind, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, purged_at, origin_name, origin_version, group_id`
+const recordColumns = `id, uuid, original_path, original_name, size, hash, node_type, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, purged_at, origin_name, origin_version, group_id`
 
 // DB wraps a *sql.DB connection to the saferm SQLite database.
 type DB struct {
@@ -49,7 +49,7 @@ type DeletionRecord struct {
 	OriginalName  string
 	Size          int64
 	Hash          string
-	Kind          archive.Kind // what was archived; the one authority for it
+	NodeType      archive.NodeType // what was archived; the one authority for it
 	DeletedAt     time.Time
 	Command       string // may be empty
 	Description   string
@@ -190,21 +190,21 @@ func migrate(conn *sql.DB) error {
 	}
 
 	if version < 4 {
-		if err := migrateToKindColumn(conn); err != nil {
-			return fmt.Errorf("migration 4 (kind column): %w", err)
+		if err := migrateToNodeTypeColumn(conn); err != nil {
+			return fmt.Errorf("migration 4 (node_type column): %w", err)
 		}
 	}
 
 	return nil
 }
 
-// migrateToKindColumn is migration 4: one `kind` column replaces is_directory
+// migrateToNodeTypeColumn is migration 4: one `node_type` column replaces is_directory
 // and the inference of a symlink from a non-null symlink_target, so what a
 // record archived is stated once, by the row, and is checked by the schema.
 //
 // SQLite can neither add a column carrying a CHECK constraint nor drop one, so
 // the table is rebuilt: the new definition is created under a temporary name,
-// every row is copied with its kind derived the way the readers used to derive
+// every row is copied with its node type derived the way the readers used to derive
 // it (a symlink target first, because a link to a directory carried both
 // markers and what saferm archived was the link), the old table is dropped and
 // the new one takes its name. The AUTOINCREMENT counter is carried across, so
@@ -213,9 +213,9 @@ func migrate(conn *sql.DB) error {
 //
 // A binary from before this migration cannot read or write the rebuilt table,
 // and that is deliberate: saferm is pre-stable and keeps no second spelling of
-// a record's kind for older readers.
-func migrateToKindColumn(conn *sql.DB) error {
-	present, err := hasColumn(conn, "deletions", "kind")
+// a record's node type for older readers.
+func migrateToNodeTypeColumn(conn *sql.DB) error {
+	present, err := hasColumn(conn, "deletions", "node_type")
 	if err != nil {
 		return err
 	}
@@ -234,10 +234,10 @@ func migrateToKindColumn(conn *sql.DB) error {
 		const kept = `id, uuid, original_path, original_name, size, hash, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, purged_at, origin_name, origin_version, group_id`
 		steps := []string{
 			deletionsTableSQL("deletions_rebuild"),
-			`INSERT INTO deletions_rebuild (` + kept + `, kind) SELECT ` + kept + `, CASE` +
-				` WHEN symlink_target IS NOT NULL THEN '` + string(archive.KindSymlink) + `'` +
-				` WHEN is_directory != 0 THEN '` + string(archive.KindDirectory) + `'` +
-				` ELSE '` + string(archive.KindFile) + `' END FROM deletions`,
+			`INSERT INTO deletions_rebuild (` + kept + `, node_type) SELECT ` + kept + `, CASE` +
+				` WHEN symlink_target IS NOT NULL THEN '` + string(archive.NodeTypeSymlink) + `'` +
+				` WHEN is_directory != 0 THEN '` + string(archive.NodeTypeDirectory) + `'` +
+				` ELSE '` + string(archive.NodeTypeFile) + `' END FROM deletions`,
 			`DROP TABLE deletions`,
 			`ALTER TABLE deletions_rebuild RENAME TO deletions`,
 		}
@@ -311,21 +311,21 @@ func (d *DB) Insert(rec *DeletionRecord) (int64, error) {
 	if err := validateOrigin(rec); err != nil {
 		return 0, err
 	}
-	if _, err := archive.ParseKind(string(rec.Kind)); err != nil {
+	if _, err := archive.ParseNodeType(string(rec.NodeType)); err != nil {
 		return 0, err
 	}
 
 	var id int64
 	err := d.retry(func() error {
 		result, err := d.conn.Exec(
-			`INSERT INTO deletions (uuid, original_path, original_name, size, hash, kind, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, origin_name, origin_version, group_id)
+			`INSERT INTO deletions (uuid, original_path, original_name, size, hash, node_type, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, origin_name, origin_version, group_id)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			rec.UUID,
 			rec.OriginalPath,
 			rec.OriginalName,
 			rec.Size,
 			rec.Hash,
-			string(rec.Kind),
+			string(rec.NodeType),
 			rec.DeletedAt.Format(time.RFC3339),
 			nullableString(rec.Command),
 			rec.Description,
@@ -569,22 +569,22 @@ func (d *DB) MarkPurged(id int64) error {
 }
 
 // ErrRecordChanged is a conditional update whose row was no longer in the state
-// the caller read: restored, purged, or already given another kind.
+// the caller read: restored, purged, or already given another node type.
 var ErrRecordChanged = errors.New("the record changed since it was read")
 
-// Reclassify gives a live record of kind from the kind to, with the symlink
-// target, hash and size a deletion of that kind records. It changes the row
-// only while it is still live and still of kind from, and reports
+// Reclassify gives a live record of node type from the node type to, with the
+// symlink target, hash and size a deletion of that node type records. It changes
+// the row only while it is still live and still of node type from, and reports
 // [ErrRecordChanged] otherwise, so a concurrent restore or purge is never
 // overwritten.
-func (d *DB) Reclassify(id int64, from, to archive.Kind, symlinkTarget *string, hash string, size int64) error {
-	if _, err := archive.ParseKind(string(to)); err != nil {
+func (d *DB) Reclassify(id int64, from, to archive.NodeType, symlinkTarget *string, hash string, size int64) error {
+	if _, err := archive.ParseNodeType(string(to)); err != nil {
 		return err
 	}
 	return d.retry(func() error {
 		result, err := d.conn.Exec(
-			`UPDATE deletions SET kind = ?, symlink_target = ?, hash = ?, size = ?
-			 WHERE id = ? AND kind = ? AND `+liveOnly,
+			`UPDATE deletions SET node_type = ?, symlink_target = ?, hash = ?, size = ?
+			 WHERE id = ? AND node_type = ? AND `+liveOnly,
 			string(to), symlinkTarget, hash, size, id, string(from))
 		if err != nil {
 			return err
@@ -614,7 +614,7 @@ type scanner interface {
 // scanOne scans a single row from any scanner into a DeletionRecord.
 func scanOne(s scanner) (*DeletionRecord, error) {
 	var rec DeletionRecord
-	var kind string
+	var nodeType string
 	var deletedAtStr string
 	var command sql.NullString
 	var metadata sql.NullString
@@ -624,7 +624,7 @@ func scanOne(s scanner) (*DeletionRecord, error) {
 
 	err := s.Scan(
 		&rec.ID, &rec.UUID, &rec.OriginalPath, &rec.OriginalName,
-		&rec.Size, &rec.Hash, &kind, &deletedAtStr,
+		&rec.Size, &rec.Hash, &nodeType, &deletedAtStr,
 		&command, &rec.Description, &metadata,
 		&restoredAtStr, &restoredTo, &rec.SymlinkTarget,
 		&purgedAtStr,
@@ -634,7 +634,7 @@ func scanOne(s scanner) (*DeletionRecord, error) {
 		return nil, err
 	}
 
-	rec.Kind, err = archive.ParseKind(kind)
+	rec.NodeType, err = archive.ParseNodeType(nodeType)
 	if err != nil {
 		return nil, fmt.Errorf("record %d: %w", rec.ID, err)
 	}

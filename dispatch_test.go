@@ -6,56 +6,56 @@ import (
 	"github.com/stricttools/saferm/internal/archive"
 )
 
-// Every kind dispatch in the command package has a case for each of
-// [archive.Kinds] and refuses any other kind as a hard error. The archive
+// Every node type dispatch in the command package has a case for each of
+// [archive.NodeTypes] and refuses any other node type as a hard error. The archive
 // package holds its own dispatches to the same test.
-func TestEveryKindDispatchHandlesEveryKind(t *testing.T) {
-	const bogus archive.Kind = "bogus"
-	for _, k := range append(archive.Kinds(), bogus) {
+func TestEveryNodeTypeDispatchHandlesEveryNodeType(t *testing.T) {
+	const bogus archive.NodeType = "bogus"
+	for _, k := range append(archive.NodeTypes(), bogus) {
 		known := k != bogus
 		tmp := t.TempDir()
 
-		rp := &archive.RestorePlan{UUID: "u", ArchiveDir: tmp, Dest: tmp + "/dest", Kind: k, Entry: tmp + "/entry"}
+		rp := &archive.RestorePlan{UUID: "u", ArchiveDir: tmp, Dest: tmp + "/dest", NodeType: k, Entry: tmp + "/entry"}
 		if _, err := restoreSteps(rp, false); (err == nil) != known {
 			t.Errorf("restoreSteps(%q): %v", k, err)
 		}
 
-		plan := &archive.Plan{Source: tmp, ArchiveDir: tmp, UUID: "u", Kind: k, Dest: tmp + "/entry"}
+		plan := &archive.Plan{Source: tmp, ArchiveDir: tmp, UUID: "u", NodeType: k, Dest: tmp + "/entry"}
 		if _, err := previewEntryContent(plan); (err == nil) != known {
 			t.Errorf("previewEntryContent(%q): %v", k, err)
 		}
 
 		panicked := func() (p bool) {
 			defer func() { p = recover() != nil }()
-			kindIndicator(k)
+			nodeTypeMarker(k)
 			return false
 		}()
 		if panicked == known {
-			t.Errorf("kindIndicator(%q) panicked: %v", k, panicked)
+			t.Errorf("nodeTypeMarker(%q) panicked: %v", k, panicked)
 		}
 	}
 }
 
-// The machine payloads' kind enums and the capability features are generated
-// from archive.Kinds, so every kind reaches every surface.
-func TestKindEnumsAndFeaturesCoverEveryKind(t *testing.T) {
+// The machine payloads' node type enums and the capability features are generated
+// from archive.NodeTypes, so every node type reaches every surface.
+func TestNodeTypeEnumsAndFeaturesCoverEveryNodeType(t *testing.T) {
 	enum := map[interface{}]bool{}
-	for _, v := range kindEnum() {
+	for _, v := range nodeTypeEnum() {
 		enum[v] = true
 	}
 	have := map[string]bool{}
 	for _, f := range features {
 		have[f] = true
 	}
-	for _, k := range archive.Kinds() {
+	for _, k := range archive.NodeTypes() {
 		if !enum[string(k)] {
-			t.Errorf("the kind enum lacks %q", k)
+			t.Errorf("the node type enum lacks %q", k)
 		}
-		if !have[kindFeaturePrefix+string(k)] {
-			t.Errorf("capabilities lacks %s%s", kindFeaturePrefix, k)
+		if !have[nodeTypeFeaturePrefix+string(k)] {
+			t.Errorf("capabilities lacks %s%s", nodeTypeFeaturePrefix, k)
 		}
 	}
-	if len(enum) != len(archive.Kinds()) {
-		t.Errorf("the kind enum has %d values, archive.Kinds has %d", len(enum), len(archive.Kinds()))
+	if len(enum) != len(archive.NodeTypes()) {
+		t.Errorf("the node type enum has %d values, archive.NodeTypes has %d", len(enum), len(archive.NodeTypes()))
 	}
 }

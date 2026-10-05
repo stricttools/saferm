@@ -15,5 +15,5 @@ func deviceNumbers(info fs.FileInfo) (major, minor uint32) {
 
 // makeNode refuses: saferm recreates special files only on Linux and macOS.
 func makeNode(path string, n Node) error {
-	return fmt.Errorf("recreating the %s %s: %w on %s", n.Kind, path, ErrNodeUnsupported, runtime.GOOS)
+	return fmt.Errorf("recreating the %s %s: %w on %s", n.NodeType, path, ErrNodeUnsupported, runtime.GOOS)
 }

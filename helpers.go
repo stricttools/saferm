@@ -149,17 +149,17 @@ func openArchiveDBIfPresent(ctx *strictcli.Context, dbPath string) (*db.DB, erro
 	return db.Open(dbPath, retryNotifier(ctx))
 }
 
-// recordKind names what a record archived, in the word every surface uses:
-// the record's own `kind` column, which is the one authority for it.
-func recordKind(rec *db.DeletionRecord) string {
-	return string(rec.Kind)
+// recordNodeType names what a record archived, in the word every surface uses:
+// the record's own `node_type` column, which is the one authority for it.
+func recordNodeType(rec *db.DeletionRecord) string {
+	return string(rec.NodeType)
 }
 
-// kindEnum is the closed set the machine payloads' `kind` member declares,
-// generated from [archive.Kinds] so a new kind reaches every schema at once.
-func kindEnum() []interface{} {
-	enum := make([]interface{}, 0, len(archive.Kinds()))
-	for _, k := range archive.Kinds() {
+// nodeTypeEnum is the closed set the machine payloads' `node_type` member declares,
+// generated from [archive.NodeTypes] so a new node type reaches every schema at once.
+func nodeTypeEnum() []interface{} {
+	enum := make([]interface{}, 0, len(archive.NodeTypes()))
+	for _, k := range archive.NodeTypes() {
 		enum = append(enum, string(k))
 	}
 	return enum
@@ -170,7 +170,7 @@ func kindEnum() []interface{} {
 // `info` reports whether it is still there, and the two answering differently
 // would be worse than either being wrong.
 func archiveEntryPath(archiveDir string, rec *db.DeletionRecord) string {
-	return archive.EntryPath(archiveDir, rec.UUID, rec.Kind)
+	return archive.EntryPath(archiveDir, rec.UUID, rec.NodeType)
 }
 
 // archiveEntryIsGone reports whether a record's archived content is not on

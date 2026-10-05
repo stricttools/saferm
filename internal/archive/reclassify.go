@@ -22,8 +22,8 @@ import (
 // the record's own entry in place.
 type Reclassification struct {
 	UUID          string
-	From          Kind
-	To            Kind
+	From          NodeType
+	To            NodeType
 	OldEntry      string
 	NewEntry      string
 	SymlinkTarget string // what a reclassified symlink points at
@@ -40,7 +40,7 @@ var ErrNotReclassifiable = errors.New("the archive entry contradicts its record 
 // reclassification it needs, nil when the entry agrees with the kind or is not
 // there at all (a missing entry is `info`'s entry-missing, which nothing here
 // can fix), or [ErrNotReclassifiable]. It changes nothing.
-func PlanReclassification(archiveDir string, uuid string, kind Kind, symlinkTarget string) (*Reclassification, error) {
+func PlanReclassification(archiveDir string, uuid string, kind NodeType, symlinkTarget string) (*Reclassification, error) {
 	p := NewRestorePlan(uuid, archiveDir, "", kind, symlinkTarget)
 	err := EntryPresent(p)
 	switch {
@@ -51,7 +51,7 @@ func PlanReclassification(archiveDir string, uuid string, kind Kind, symlinkTarg
 	}
 
 	info, lerr := os.Lstat(p.Entry)
-	if lerr != nil || kind != KindFile {
+	if lerr != nil || kind != NodeTypeFile {
 		return nil, fmt.Errorf("%s: %w: %v", p.Entry, ErrNotReclassifiable, err)
 	}
 	actual, cerr := Classify(p.Entry, info.Mode())
@@ -60,21 +60,21 @@ func PlanReclassification(archiveDir string, uuid string, kind Kind, symlinkTarg
 	}
 	r := &Reclassification{UUID: uuid, From: kind, To: actual, OldEntry: p.Entry, NewEntry: EntryPath(archiveDir, uuid, actual)}
 	switch actual {
-	case KindSymlink:
+	case NodeTypeSymlink:
 		target, err := os.Readlink(p.Entry)
 		if err != nil {
 			return nil, err
 		}
 		r.SymlinkTarget = target
 		r.Content = []byte(target)
-	case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+	case NodeTypeFIFO, NodeTypeSocket, NodeTypeCharacterDevice, NodeTypeBlockDevice:
 		r.Content = EncodeNode(nodeOf(actual, info))
 		sum := sha256.Sum256(r.Content)
 		r.Hash = hex.EncodeToString(sum[:])
-	case KindFile, KindDirectory:
+	case NodeTypeFile, NodeTypeDirectory:
 		return nil, fmt.Errorf("%s: %w: it is %s", p.Entry, ErrNotReclassifiable, articled(describeMode(info.Mode())))
 	default:
-		return nil, unknownKind(actual)
+		return nil, unknownNodeType(actual)
 	}
 	return r, nil
 }

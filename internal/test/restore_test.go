@@ -354,7 +354,7 @@ func TestUndelete_DryRunOverwrite_RefusesACorruptArchiveToo(t *testing.T) {
 
 // A symlink was never hashed. Its entry is the recorded target written out, so
 // verification is an equality against the record -- and it must not fail
-// spuriously on the ordinary case, which is the whole reason the three kinds
+// spuriously on the ordinary case, which is the whole reason the three node types
 // are defined separately.
 func TestUndelete_SymlinkEntryDiverged_RefusesBeforeTouchingTheDestination(t *testing.T) {
 	homeDir := testutil.SetupTestEnv(t)

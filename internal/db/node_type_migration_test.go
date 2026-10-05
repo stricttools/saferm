@@ -10,7 +10,7 @@ import (
 )
 
 // v3SchemaSQL is the deletions table as saferm shipped it at user_version 3,
-// the last schema with is_directory and no kind column.
+// the last schema with is_directory and no node_type column.
 const v3SchemaSQL = `
 CREATE TABLE IF NOT EXISTS deletions (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,26 +76,26 @@ func openV3DB(t *testing.T) string {
 	return dbPath
 }
 
-func TestMigration4_DerivesEveryRowsKind(t *testing.T) {
+func TestMigration4_DerivesEveryRowsNodeType(t *testing.T) {
 	d, err := Open(openV3DB(t), nil)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	defer d.Close()
 
-	want := map[string]archive.Kind{
-		"file-uuid":    archive.KindFile,
-		"dir-uuid":     archive.KindDirectory,
-		"link-uuid":    archive.KindSymlink,
-		"dirlink-uuid": archive.KindSymlink,
+	want := map[string]archive.NodeType{
+		"file-uuid":    archive.NodeTypeFile,
+		"dir-uuid":     archive.NodeTypeDirectory,
+		"link-uuid":    archive.NodeTypeSymlink,
+		"dirlink-uuid": archive.NodeTypeSymlink,
 	}
-	for uuid, kind := range want {
+	for uuid, nodeType := range want {
 		rec, err := d.QueryByUUID(uuid)
 		if err != nil {
 			t.Fatalf("%s: %v", uuid, err)
 		}
-		if rec.Kind != kind {
-			t.Errorf("%s: kind %q, want %q", uuid, rec.Kind, kind)
+		if rec.NodeType != nodeType {
+			t.Errorf("%s: node type %q, want %q", uuid, rec.NodeType, nodeType)
 		}
 	}
 	if present, err := hasColumn(d.conn, "deletions", "is_directory"); err != nil || present {
@@ -110,7 +110,7 @@ func TestMigration4_NeverReissuesAnID(t *testing.T) {
 	}
 	defer d.Close()
 	id, err := d.Insert(&DeletionRecord{UUID: "new", OriginalPath: "/x/new", OriginalName: "new",
-		Hash: "h", Kind: archive.KindFile, DeletedAt: time.Now(), Description: "d"})
+		Hash: "h", NodeType: archive.NodeTypeFile, DeletedAt: time.Now(), Description: "d"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestMigration4_NeverReissuesAnID(t *testing.T) {
 	}
 }
 
-func TestKindColumn_RefusesAnUnknownKindAndAnInconsistentSymlink(t *testing.T) {
+func TestNodeTypeColumn_RefusesAnUnknownNodeTypeAndAnInconsistentSymlink(t *testing.T) {
 	for _, label := range []string{"fresh", "migrated"} {
 		path := t.TempDir() + "/k.db"
 		if label == "migrated" {
@@ -130,23 +130,23 @@ func TestKindColumn_RefusesAnUnknownKindAndAnInconsistentSymlink(t *testing.T) {
 			t.Fatal(err)
 		}
 		now := time.Now().Format(time.RFC3339)
-		insert := `INSERT INTO deletions (uuid, original_path, original_name, size, hash, kind, deleted_at, description, symlink_target) VALUES (?, '/p', 'p', 0, '', ?, ?, 'd', ?)`
+		insert := `INSERT INTO deletions (uuid, original_path, original_name, size, hash, node_type, deleted_at, description, symlink_target) VALUES (?, '/p', 'p', 0, '', ?, ?, 'd', ?)`
 		if _, err := d.conn.Exec(insert, "u1", "bogus", now, nil); err == nil || !strings.Contains(err.Error(), "CHECK") {
-			t.Errorf("%s: an unknown kind was accepted (%v)", label, err)
+			t.Errorf("%s: an unknown node type was accepted (%v)", label, err)
 		}
-		if _, err := d.conn.Exec(insert, "u2", string(archive.KindSymlink), now, nil); err == nil {
+		if _, err := d.conn.Exec(insert, "u2", string(archive.NodeTypeSymlink), now, nil); err == nil {
 			t.Errorf("%s: a symlink without a target was accepted", label)
 		}
-		if _, err := d.conn.Exec(insert, "u3", string(archive.KindFile), now, "t"); err == nil {
+		if _, err := d.conn.Exec(insert, "u3", string(archive.NodeTypeFile), now, "t"); err == nil {
 			t.Errorf("%s: a file carrying a symlink target was accepted", label)
 		}
-		for i, k := range archive.Kinds() {
+		for i, k := range archive.NodeTypes() {
 			var target any
-			if k == archive.KindSymlink {
+			if k == archive.NodeTypeSymlink {
 				target = "t"
 			}
 			if _, err := d.conn.Exec(insert, "k"+string(rune('a'+i)), string(k), now, target); err != nil {
-				t.Errorf("%s: kind %q refused: %v", label, k, err)
+				t.Errorf("%s: node type %q refused: %v", label, k, err)
 			}
 		}
 		d.Close()

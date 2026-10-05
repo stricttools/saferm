@@ -35,12 +35,12 @@ type undeletePayload struct {
 	UUID         string `json:"uuid"`
 	OriginalPath string `json:"original_path"`
 	RestoredTo   string `json:"restored_to"`
-	Kind         string `json:"kind"`
+	NodeType     string `json:"node_type"`
 	Overwrote    bool   `json:"overwrote"`
 }
 
 // undeletePayloadSchema declares the payload above over the framework's closed
-// subset. `kind` is an enum generated from [archive.Kinds].
+// subset. `node_type` is an enum generated from [archive.NodeTypes].
 var undeletePayloadSchema = map[string]interface{}{
 	"type": "object",
 	"properties": map[string]interface{}{
@@ -48,10 +48,10 @@ var undeletePayloadSchema = map[string]interface{}{
 		"uuid":          map[string]interface{}{"type": "string"},
 		"original_path": map[string]interface{}{"type": "string"},
 		"restored_to":   map[string]interface{}{"type": "string"},
-		"kind":          map[string]interface{}{"type": "string", "enum": kindEnum()},
+		"node_type":     map[string]interface{}{"type": "string", "enum": nodeTypeEnum()},
 		"overwrote":     map[string]interface{}{"type": "boolean"},
 	},
-	"required":             []interface{}{"id", "uuid", "original_path", "restored_to", "kind", "overwrote"},
+	"required":             []interface{}{"id", "uuid", "original_path", "restored_to", "node_type", "overwrote"},
 	"additionalProperties": false,
 }
 
@@ -177,7 +177,7 @@ func handleUndelete(ctx *strictcli.Context, kwargs map[string]interface{}) stric
 		symlinkTarget = *rec.SymlinkTarget
 	}
 
-	plan := archive.NewRestorePlan(rec.UUID, archiveDir, dest, rec.Kind, symlinkTarget)
+	plan := archive.NewRestorePlan(rec.UUID, archiveDir, dest, rec.NodeType, symlinkTarget)
 
 	// A stat, not a read, and it runs in every mode: an entry that is not there
 	// is worth saying so before anything else is decided, rather than surfacing
@@ -187,7 +187,7 @@ func handleUndelete(ctx *strictcli.Context, kwargs map[string]interface{}) stric
 		return strictcli.Exit(ExitArchive)
 	}
 
-	occupied, err := destinationOccupied(dest, rec.Kind == archive.KindDirectory)
+	occupied, err := destinationOccupied(dest, rec.NodeType == archive.NodeTypeDirectory)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: reading the destination %s: %s\n", dest, err)
 		return strictcli.Exit(ExitGeneral)
@@ -235,7 +235,7 @@ func handleUndelete(ctx *strictcli.Context, kwargs map[string]interface{}) stric
 		UUID:         rec.UUID,
 		OriginalPath: rec.OriginalPath,
 		RestoredTo:   dest,
-		Kind:         recordKind(rec),
+		NodeType:     recordNodeType(rec),
 		Overwrote:    overwrite,
 	})
 
@@ -309,7 +309,7 @@ func destinationOccupied(dest string, isDirectory bool) (bool, error) {
 // -- removing what is at the destination, making the parent directory, moving a
 // file out of the archive, dropping the consumed entry -- and can only DESCRIBE
 // the rest, because recreating a symlink and extracting a tar+zstd tree have no
-// primitive on the handle. Both kinds of step live in one list, built once from
+// primitive on the handle. Both sorts of step live in one list, built once from
 // one plan, so a change to what a restore does changes what a preview says by
 // construction. The real path used to do all of it behind the handle's back,
 // with only the dry branch minting anything, which is exactly how a preview
@@ -351,7 +351,7 @@ func runRestore(ctx *strictcli.Context, p *archive.RestorePlan, overwrite bool) 
 //
 // The ordering carries one invariant: THE ARCHIVED COPY IS CONSUMED LAST. A
 // file's move out of the archive is itself the consumption and cannot fail
-// halfway; every other kind writes the destination first and drops the entry
+// halfway; every other node type writes the destination first and drops the entry
 // only once that has worked. So any failure -- a refused symlink, a truncated
 // tar, a copy that ran out of space -- leaves the entry where it is and the
 // restore can simply be run again.
@@ -371,8 +371,8 @@ func restoreSteps(p *archive.RestorePlan, overwrite bool) ([]restoreStep, error)
 		return err
 	}})
 
-	switch p.Kind {
-	case archive.KindFile:
+	switch p.NodeType {
+	case archive.NodeTypeFile:
 		// The move IS the consumption: a rename either happened or did not, and
 		// the cross-device fallback copies before it removes.
 		steps = append(steps, restoreStep{seam: func(fx *strictcli.Effects) error {
@@ -383,7 +383,7 @@ func restoreSteps(p *archive.RestorePlan, overwrite bool) ([]restoreStep, error)
 			return err
 		}})
 
-	case archive.KindSymlink:
+	case archive.NodeTypeSymlink:
 		// A symlink's entry IS its target path written out, which is what the
 		// preview says; the real act is a symlink call the handle has no
 		// primitive for.
@@ -398,7 +398,7 @@ func restoreSteps(p *archive.RestorePlan, overwrite bool) ([]restoreStep, error)
 			consumeEntryStep(p),
 		)
 
-	case archive.KindDirectory:
+	case archive.NodeTypeDirectory:
 		// The tree appears at the destination; its size is not knowable before
 		// the extraction runs, so the write is declared with no content.
 		steps = append(steps,
@@ -412,7 +412,7 @@ func restoreSteps(p *archive.RestorePlan, overwrite bool) ([]restoreStep, error)
 			consumeEntryStep(p),
 		)
 
-	case archive.KindFIFO, archive.KindSocket, archive.KindCharacterDevice, archive.KindBlockDevice:
+	case archive.NodeTypeFIFO, archive.NodeTypeSocket, archive.NodeTypeCharacterDevice, archive.NodeTypeBlockDevice:
 		// A special file holds no bytes, so the preview declares an empty write
 		// at the destination; the real act is a mkfifo or mknod the handle has
 		// no primitive for. A device made without the privilege mknod needs
@@ -429,7 +429,7 @@ func restoreSteps(p *archive.RestorePlan, overwrite bool) ([]restoreStep, error)
 		)
 
 	default:
-		return nil, fmt.Errorf("restoring %s: unknown archive kind %q", p.Dest, string(p.Kind))
+		return nil, fmt.Errorf("restoring %s: unknown node type %q", p.Dest, string(p.NodeType))
 	}
 
 	return steps, nil
@@ -449,7 +449,7 @@ var renameOut = func(fx *strictcli.Effects, entry, dest string) error {
 }
 
 // consumeEntryStep drops the archived copy once the destination holds it. It is
-// always the last step of the kinds that do not consume the entry by moving it.
+// always the last step of the node types that do not consume the entry by moving it.
 func consumeEntryStep(p *archive.RestorePlan) restoreStep {
 	return restoreStep{seam: func(fx *strictcli.Effects) error {
 		_, err := fx.Remove(p.Entry, strictcli.Resource("saferm-entry:"+p.UUID))

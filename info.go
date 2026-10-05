@@ -49,7 +49,7 @@ type infoPayload struct {
 	OriginalName  string  `json:"original_name"`
 	Size          int64   `json:"size"`
 	Hash          string  `json:"hash"`
-	Kind          string  `json:"kind"`
+	NodeType      string  `json:"node_type"`
 	SymlinkTarget *string `json:"symlink_target"`
 	DeletedAt     string  `json:"deleted_at"`
 	Status        string  `json:"status"`
@@ -75,7 +75,7 @@ var infoPayloadSchema = map[string]interface{}{
 		"original_name":  map[string]interface{}{"type": "string"},
 		"size":           map[string]interface{}{"type": "integer"},
 		"hash":           map[string]interface{}{"type": "string"},
-		"kind":           map[string]interface{}{"type": "string", "enum": kindEnum()},
+		"node_type":      map[string]interface{}{"type": "string", "enum": nodeTypeEnum()},
 		"symlink_target": map[string]interface{}{"type": []interface{}{"string", "null"}},
 		"deleted_at":     map[string]interface{}{"type": "string"},
 		"status": map[string]interface{}{"type": "string", "enum": []interface{}{
@@ -91,7 +91,7 @@ var infoPayloadSchema = map[string]interface{}{
 		"group_id":       map[string]interface{}{"type": []interface{}{"string", "null"}},
 	},
 	"required": []interface{}{
-		"id", "uuid", "original_path", "original_name", "size", "hash", "kind", "symlink_target",
+		"id", "uuid", "original_path", "original_name", "size", "hash", "node_type", "symlink_target",
 		"deleted_at", "status", "description", "command", "restored_at", "restored_to", "purged_at",
 		"origin_name", "origin_version", "group_id",
 	},
@@ -128,9 +128,9 @@ func registerInfoCmd(app *strictcli.App) {
 // that cannot work.
 //
 // The same holds for an entry that is there but is not the shape the record's
-// kind says it is -- a FIFO or a symlink standing where a file record expects a
+// node type says it is -- a FIFO or a symlink standing where a file record expects a
 // regular file, the leftovers of saferm versions that did not recognize those
-// types, or a special file's descriptor of another kind. undelete refuses it,
+// types, or a special file's descriptor of another node type. undelete refuses it,
 // so "restorable" would be a lie.
 func recordStatus(rec *db.DeletionRecord, archiveDir string) string {
 	var parts []string
@@ -179,7 +179,7 @@ func recordMachineStatus(rec *db.DeletionRecord, archiveDir string) string {
 
 // entryState reads a live record's archive entry the way undelete's first
 // check does: missing when nothing is there, and corrupt -- with the reason --
-// when what is there is not the shape the record's kind says it is. Any other
+// when what is there is not the shape the record's node type says it is. Any other
 // failure to read it is neither, as [archiveEntryIsGone] explains.
 func entryState(archiveDir string, rec *db.DeletionRecord) (missing bool, corrupt error) {
 	if archiveEntryIsGone(archiveDir, rec) {
@@ -189,7 +189,7 @@ func entryState(archiveDir string, rec *db.DeletionRecord) (missing bool, corrup
 	if rec.SymlinkTarget != nil {
 		target = *rec.SymlinkTarget
 	}
-	err := archive.EntryPresent(archive.NewRestorePlan(rec.UUID, archiveDir, rec.OriginalPath, rec.Kind, target))
+	err := archive.EntryPresent(archive.NewRestorePlan(rec.UUID, archiveDir, rec.OriginalPath, rec.NodeType, target))
 	if errors.Is(err, archive.ErrEntryCorrupt) {
 		return false, err
 	}
@@ -215,7 +215,7 @@ func infoPayloadOf(rec *db.DeletionRecord, archiveDir string) infoPayload {
 		OriginalName:  rec.OriginalName,
 		Size:          rec.Size,
 		Hash:          rec.Hash,
-		Kind:          recordKind(rec),
+		NodeType:      recordNodeType(rec),
 		SymlinkTarget: rec.SymlinkTarget,
 		DeletedAt:     rec.DeletedAt.Format(time.RFC3339),
 		Status:        recordMachineStatus(rec, archiveDir),
@@ -261,7 +261,7 @@ func handleInfo(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 		return strictcli.Exit(code)
 	}
 
-	fileType := recordKind(rec)
+	fileType := recordNodeType(rec)
 
 	ctx.Payload(infoPayloadOf(rec, archiveDir))
 

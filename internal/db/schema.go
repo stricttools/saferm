@@ -12,12 +12,12 @@ import (
 // temporary name, copies the rows across and renames it, because SQLite cannot
 // add a column with a CHECK constraint or drop one in place.
 //
-// `kind` is the single authority for what a record archived. Its CHECK lists
-// [archive.Kinds], generated rather than typed, and a symlink is the one kind
+// `node_type` is the single authority for what a record archived. Its CHECK lists
+// [archive.NodeTypes], generated rather than typed, and a symlink is the one node type
 // that carries a target, which the table-level CHECK holds the row to.
 func deletionsTableSQL(name string) string {
-	quoted := make([]string, 0, len(archive.Kinds()))
-	for _, k := range archive.Kinds() {
+	quoted := make([]string, 0, len(archive.NodeTypes()))
+	for _, k := range archive.NodeTypes() {
 		quoted = append(quoted, "'"+string(k)+"'")
 	}
 	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
@@ -27,7 +27,7 @@ func deletionsTableSQL(name string) string {
 	original_name TEXT NOT NULL,
 	size          INTEGER NOT NULL,
 	hash          TEXT NOT NULL,
-	kind          TEXT NOT NULL CHECK (kind IN (%s)),
+	node_type     TEXT NOT NULL CHECK (node_type IN (%s)),
 	deleted_at    TEXT NOT NULL,
 	command       TEXT,
 	description   TEXT NOT NULL,
@@ -46,8 +46,8 @@ func deletionsTableSQL(name string) string {
 	-- invocation, so a batch is recoverable as a batch; null on rows written
 	-- before the column existed.
 	group_id       TEXT,
-	CHECK ((kind = '%s') = (symlink_target IS NOT NULL))
-);`, name, strings.Join(quoted, ", "), archive.KindSymlink)
+	CHECK ((node_type = '%s') = (symlink_target IS NOT NULL))
+);`, name, strings.Join(quoted, ", "), archive.NodeTypeSymlink)
 }
 
 // indexesSQL creates the deletions table's indexes. It runs after the

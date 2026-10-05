@@ -306,7 +306,7 @@ func TestDelete_AFileReplacedDuringTheInsertIsNotRemoved(t *testing.T) {
 // before the source is removed, so a concurrent `saferm purge --all` can select
 // that row and destroy its blob legitimately while the archival is still
 // waiting on its own insert. Removing the source then would leave no copy of
-// the content anywhere. Every kind is covered, because every kind's entry is a
+// the content anywhere. Every node type is covered, because every node type's entry is a
 // file some other process can remove.
 
 // windowStarter is either of the two ways to stop a delete inside its window.

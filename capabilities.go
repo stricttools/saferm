@@ -55,7 +55,7 @@ const (
 	featureOnErrorModes = "on-error-modes"
 
 	// featureReclassifyRecords: `reclassify-records` gives every live record
-	// whose archive entry contradicts its kind the kind the entry holds.
+	// whose archive entry contradicts its node type the node type the entry holds.
 	featureReclassifyRecords = "reclassify-records"
 
 	// featureRestoreDestination: `undelete --destination <path>` restores
@@ -79,11 +79,11 @@ const (
 	featureUUIDHandles = "uuid-handles"
 )
 
-// kindFeaturePrefix starts the feature that names one kind of thing saferm
-// archives and restores: `kind-file`, `kind-fifo`, and one for each of
-// [archive.Kinds], generated from that list so a new kind is negotiable the
-// moment it exists. A consumer that hands saferm a FIFO asks for `kind-fifo`.
-const kindFeaturePrefix = "kind-"
+// nodeTypeFeaturePrefix starts the feature that names one type of file saferm
+// archives and restores: `node-type-file`, `node-type-fifo`, and one for each of
+// [archive.NodeTypes], generated from that list so a new node type is negotiable the
+// moment it exists. A consumer that hands saferm a FIFO asks for `node-type-fifo`.
+const nodeTypeFeaturePrefix = "node-type-"
 
 // features is the list the verb answers with, in a fixed order so two runs of
 // the same binary produce the same document.
@@ -100,13 +100,13 @@ var features = append([]string{
 	featureTraceOrigin,
 	featureUsageReport,
 	featureUUIDHandles,
-}, kindFeatures()...)
+}, nodeTypeFeatures()...)
 
-// kindFeatures is one feature per [archive.Kinds], in that list's order.
-func kindFeatures() []string {
-	out := make([]string, 0, len(archive.Kinds()))
-	for _, k := range archive.Kinds() {
-		out = append(out, kindFeaturePrefix+string(k))
+// nodeTypeFeatures is one feature per [archive.NodeTypes], in that list's order.
+func nodeTypeFeatures() []string {
+	out := make([]string, 0, len(archive.NodeTypes()))
+	for _, k := range archive.NodeTypes() {
+		out = append(out, nodeTypeFeaturePrefix+string(k))
 	}
 	return out
 }

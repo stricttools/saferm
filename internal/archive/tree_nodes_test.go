@@ -59,7 +59,7 @@ func TestTree_AFIFOInsideIsRestoredAsAFIFO(t *testing.T) {
 	archiveDir := filepath.Join(tmp, "archive")
 	result := archiveTree(t, tree, archiveDir)
 
-	if err := restoreNow(result.UUID, archiveDir, tree, KindDirectory, ""); err != nil {
+	if err := restoreNow(result.UUID, archiveDir, tree, NodeTypeDirectory, ""); err != nil {
 		t.Fatalf("restoring: %v", err)
 	}
 	info, err := os.Lstat(filepath.Join(tree, "pipe"))
@@ -90,7 +90,7 @@ func TestTree_ASocketInsideIsArchivedAndRestored(t *testing.T) {
 	archiveDir := filepath.Join(tmp, "archive")
 	result := archiveTree(t, tree, archiveDir)
 
-	if err := restoreNow(result.UUID, archiveDir, tree, KindDirectory, ""); err != nil {
+	if err := restoreNow(result.UUID, archiveDir, tree, NodeTypeDirectory, ""); err != nil {
 		t.Fatalf("restoring: %v", err)
 	}
 	info, err := os.Lstat(sock)
@@ -169,7 +169,7 @@ func TestExtractTree_RefusesAMemberTypeItCannotRecreate(t *testing.T) {
 	uuid := NewUUID()
 	writeTarZst(t, filepath.Join(tmp, uuid+".tar.zst"), "top",
 		&tar.Header{Typeflag: tar.TypeLink, Name: "top/hard", Linkname: "top/other", Mode: 0o644})
-	p := NewRestorePlan(uuid, tmp, filepath.Join(tmp, "dest"), KindDirectory, "")
+	p := NewRestorePlan(uuid, tmp, filepath.Join(tmp, "dest"), NodeTypeDirectory, "")
 	if _, err := ExtractTree(p); !errors.Is(err, ErrUnsupportedTarMember) {
 		t.Fatalf("got %v, want ErrUnsupportedTarMember", err)
 	}
@@ -186,7 +186,7 @@ func TestExtractTree_ADeviceMemberWithoutPrivilegeFails(t *testing.T) {
 	writeTarZst(t, filepath.Join(tmp, uuid+".tar.zst"), "top",
 		&tar.Header{Typeflag: tar.TypeChar, Name: "top/null", Mode: 0o666, Devmajor: 1, Devminor: 3})
 	dest := filepath.Join(tmp, "dest")
-	p := NewRestorePlan(uuid, tmp, dest, KindDirectory, "")
+	p := NewRestorePlan(uuid, tmp, dest, NodeTypeDirectory, "")
 	created, err := ExtractTree(p)
 	if !errors.Is(err, ErrNodeNeedsPrivilege) {
 		t.Fatalf("got %v, want ErrNodeNeedsPrivilege", err)
@@ -196,21 +196,21 @@ func TestExtractTree_ADeviceMemberWithoutPrivilegeFails(t *testing.T) {
 	}
 }
 
-// Every kind has a tar member the extraction has a case for: a kind added to
+// Every node type has a tar member the extraction has a case for: a node type added to
 // the list without one fails here rather than being skipped on restore.
-func TestExtractTree_EveryKindHasATarMemberCase(t *testing.T) {
-	for _, k := range Kinds() {
+func TestExtractTree_EveryNodeTypeHasATarMemberCase(t *testing.T) {
+	for _, k := range NodeTypes() {
 		var h *tar.Header
 		switch k {
-		case KindFile:
+		case NodeTypeFile:
 			h = &tar.Header{Typeflag: tar.TypeReg, Name: "top/m", Mode: 0o644}
-		case KindDirectory:
+		case NodeTypeDirectory:
 			h = &tar.Header{Typeflag: tar.TypeDir, Name: "top/m", Mode: 0o755}
-		case KindSymlink:
+		case NodeTypeSymlink:
 			h = &tar.Header{Typeflag: tar.TypeSymlink, Name: "top/m", Linkname: "x"}
 		default:
 			var err error
-			h, err = nodeTarHeader(Node{Kind: k, Perm: 0o600}, "top/m", time.Now())
+			h, err = nodeTarHeader(Node{NodeType: k, Perm: 0o600}, "top/m", time.Now())
 			if err != nil {
 				t.Fatalf("%s: %v", k, err)
 			}
@@ -218,7 +218,7 @@ func TestExtractTree_EveryKindHasATarMemberCase(t *testing.T) {
 		tmp := t.TempDir()
 		uuid := NewUUID()
 		writeTarZst(t, filepath.Join(tmp, uuid+".tar.zst"), "top", h)
-		_, err := ExtractTree(NewRestorePlan(uuid, tmp, filepath.Join(tmp, "dest"), KindDirectory, ""))
+		_, err := ExtractTree(NewRestorePlan(uuid, tmp, filepath.Join(tmp, "dest"), NodeTypeDirectory, ""))
 		if errors.Is(err, ErrUnsupportedTarMember) || errors.Is(err, ErrNodeDescriptorMalformed) {
 			t.Errorf("%s: the extraction has no case for its member: %v", k, err)
 		}

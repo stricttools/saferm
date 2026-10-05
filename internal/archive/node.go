@@ -15,36 +15,36 @@ import (
 // None of them has content saferm can archive -- reading a FIFO drains whatever
 // a writer sends, a socket cannot be opened at all, and a device is read to its
 // end -- so what the archive keeps of one is what it takes to make it again:
-// its kind, its permission bits, and for a device its major and minor numbers.
+// its node type, its permission bits, and for a device its major and minor numbers.
 //
 // This file is the one codec for that description. A node archived on its own
 // is kept as a `<uuid>.node` descriptor ([EncodeNode], [DecodeNode]); a node
 // inside a tree is a tar member ([nodeTarHeader], [nodeFromTarHeader]), where
 // FIFOs and devices have tar typeflags of their own and a socket, which has
-// none, is a zero-length regular member carrying the [paxNodeKind] record.
+// none, is a zero-length regular member carrying the [paxNodeType] record.
 
 // Node is what the archive keeps of a special file.
 type Node struct {
-	Kind  Kind
-	Perm  fs.FileMode // permission bits, with setuid, setgid and sticky
-	Major uint32      // device numbers; zero for a FIFO or a socket
-	Minor uint32
+	NodeType NodeType
+	Perm     fs.FileMode // permission bits, with setuid, setgid and sticky
+	Major    uint32      // device numbers; zero for a FIFO or a socket
+	Minor    uint32
 }
 
-// IsNodeKind reports whether a kind is one of the special-file kinds.
-func IsNodeKind(k Kind) bool {
+// IsSpecialFileType reports whether a node type is one of the special files.
+func IsSpecialFileType(k NodeType) bool {
 	switch k {
-	case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+	case NodeTypeFIFO, NodeTypeSocket, NodeTypeCharacterDevice, NodeTypeBlockDevice:
 		return true
-	case KindFile, KindDirectory, KindSymlink:
+	case NodeTypeFile, NodeTypeDirectory, NodeTypeSymlink:
 		return false
 	}
-	panic(fmt.Sprintf("archive.IsNodeKind: %s", unknownKind(k)))
+	panic(fmt.Sprintf("archive.IsSpecialFileType: %s", unknownNodeType(k)))
 }
 
-// isDeviceKind reports whether a node kind carries device numbers.
-func isDeviceKind(k Kind) bool {
-	return k == KindCharacterDevice || k == KindBlockDevice
+// isDeviceType reports whether a special file's node type carries device numbers.
+func isDeviceType(k NodeType) bool {
+	return k == NodeTypeCharacterDevice || k == NodeTypeBlockDevice
 }
 
 // ErrNodeDescriptorMalformed is a `.node` descriptor or a tar member that does
@@ -57,7 +57,7 @@ var ErrNodeNeedsPrivilege = errors.New("creating a device node needs privilege (
 
 // ErrNodeUnsupported is a special file this platform gives saferm no way to
 // recreate.
-var ErrNodeUnsupported = errors.New("this kind of special file cannot be recreated")
+var ErrNodeUnsupported = errors.New("this type of special file cannot be recreated")
 
 // nodeDescriptorHeader is the first line of every descriptor, naming the
 // format and its version.
@@ -97,14 +97,14 @@ func permFromUnix(bits uint32) fs.FileMode {
 }
 
 // EncodeNode writes a node's descriptor: a header line, then one line each for
-// the kind, the mode in octal, and the major and minor device numbers.
+// the node type, the mode in octal, and the major and minor device numbers.
 func EncodeNode(n Node) []byte {
-	return []byte(fmt.Sprintf("%s\nkind %s\nmode %04o\nmajor %d\nminor %d\n",
-		nodeDescriptorHeader, n.Kind, unixPerm(n.Perm), n.Major, n.Minor))
+	return []byte(fmt.Sprintf("%s\nnode_type %s\nmode %04o\nmajor %d\nminor %d\n",
+		nodeDescriptorHeader, n.NodeType, unixPerm(n.Perm), n.Major, n.Minor))
 }
 
 // DecodeNode reads a descriptor [EncodeNode] wrote, and refuses anything else:
-// a missing or extra line, a kind that is not a node kind, a mode with bits a
+// a missing or extra line, a node type that is not a special file, a mode with bits a
 // node does not keep, or device numbers on a FIFO or a socket.
 func DecodeNode(data []byte) (Node, error) {
 	bad := func(format string, a ...any) (Node, error) {
@@ -121,13 +121,13 @@ func DecodeNode(data []byte) (Node, error) {
 		value, ok := strings.CutPrefix(line, name+" ")
 		return value, ok && value != ""
 	}
-	kindWord, ok := field(lines[1], "kind")
+	typeWord, ok := field(lines[1], "node_type")
 	if !ok {
-		return bad("second line is %q, want the kind", lines[1])
+		return bad("second line is %q, want the node type", lines[1])
 	}
-	kind, err := ParseKind(kindWord)
-	if err != nil || !IsNodeKind(kind) {
-		return bad("%q is not a special-file kind", kindWord)
+	nodeType, err := ParseNodeType(typeWord)
+	if err != nil || !IsSpecialFileType(nodeType) {
+		return bad("%q is not a special-file node type", typeWord)
 	}
 	modeWord, ok := field(lines[2], "mode")
 	if !ok {
@@ -149,9 +149,9 @@ func DecodeNode(data []byte) (Node, error) {
 		}
 		nums[i] = uint32(v)
 	}
-	n := Node{Kind: kind, Perm: permFromUnix(uint32(mode)), Major: nums[0], Minor: nums[1]}
-	if !isDeviceKind(kind) && (n.Major != 0 || n.Minor != 0) {
-		return bad("a %s carries no device numbers", kind)
+	n := Node{NodeType: nodeType, Perm: permFromUnix(uint32(mode)), Major: nums[0], Minor: nums[1]}
+	if !isDeviceType(nodeType) && (n.Major != 0 || n.Minor != 0) {
+		return bad("a %s carries no device numbers", nodeType)
 	}
 	if !bytes.Equal(EncodeNode(n), data) {
 		return bad("not in the canonical form")
@@ -159,69 +159,69 @@ func DecodeNode(data []byte) (Node, error) {
 	return n, nil
 }
 
-// paxNodeKind is the PAX record that marks a tar member as a special file tar
-// has no typeflag for. Its value is the node's kind word; only a socket is ever
+// paxNodeType is the PAX record that marks a tar member as a special file tar
+// has no typeflag for. Its value is the node's type word; only a socket is ever
 // written this way.
-const paxNodeKind = "SAFERM.nodetype"
+const paxNodeType = "SAFERM.nodetype"
 
 // nodeTarHeader is the tar member for a node inside a tree.
 func nodeTarHeader(n Node, name string, modTime time.Time) (*tar.Header, error) {
 	h := &tar.Header{Name: name, Mode: int64(unixPerm(n.Perm)), ModTime: modTime}
-	switch n.Kind {
-	case KindFIFO:
+	switch n.NodeType {
+	case NodeTypeFIFO:
 		h.Typeflag = tar.TypeFifo
-	case KindCharacterDevice:
+	case NodeTypeCharacterDevice:
 		h.Typeflag = tar.TypeChar
 		h.Devmajor, h.Devminor = int64(n.Major), int64(n.Minor)
-	case KindBlockDevice:
+	case NodeTypeBlockDevice:
 		h.Typeflag = tar.TypeBlock
 		h.Devmajor, h.Devminor = int64(n.Major), int64(n.Minor)
-	case KindSocket:
+	case NodeTypeSocket:
 		h.Typeflag = tar.TypeReg
 		h.Format = tar.FormatPAX
-		h.PAXRecords = map[string]string{paxNodeKind: string(KindSocket)}
-	case KindFile, KindDirectory, KindSymlink:
-		return nil, fmt.Errorf("%s is not a special-file kind", n.Kind)
+		h.PAXRecords = map[string]string{paxNodeType: string(NodeTypeSocket)}
+	case NodeTypeFile, NodeTypeDirectory, NodeTypeSymlink:
+		return nil, fmt.Errorf("%s is not a special-file node type", n.NodeType)
 	default:
-		return nil, unknownKind(n.Kind)
+		return nil, unknownNodeType(n.NodeType)
 	}
 	return h, nil
 }
 
 // nodeFromTarHeader reads the node a tar member describes. ok is false for a
 // member that is not a node -- a directory, a symlink, or a regular file
-// without the [paxNodeKind] record.
+// without the [paxNodeType] record.
 func nodeFromTarHeader(h *tar.Header) (n Node, ok bool, err error) {
 	perm := permFromUnix(uint32(h.Mode) & 0o7777)
 	switch h.Typeflag {
 	case tar.TypeFifo:
-		return Node{Kind: KindFIFO, Perm: perm}, true, nil
+		return Node{NodeType: NodeTypeFIFO, Perm: perm}, true, nil
 	case tar.TypeChar, tar.TypeBlock:
-		kind := KindCharacterDevice
+		nodeType := NodeTypeCharacterDevice
 		if h.Typeflag == tar.TypeBlock {
-			kind = KindBlockDevice
+			nodeType = NodeTypeBlockDevice
 		}
 		if h.Devmajor < 0 || h.Devmajor > 1<<32-1 || h.Devminor < 0 || h.Devminor > 1<<32-1 {
 			return Node{}, false, fmt.Errorf("%w: %s: device numbers %d,%d", ErrNodeDescriptorMalformed, h.Name, h.Devmajor, h.Devminor)
 		}
-		return Node{Kind: kind, Perm: perm, Major: uint32(h.Devmajor), Minor: uint32(h.Devminor)}, true, nil
+		return Node{NodeType: nodeType, Perm: perm, Major: uint32(h.Devmajor), Minor: uint32(h.Devminor)}, true, nil
 	case tar.TypeReg:
-		word, marked := h.PAXRecords[paxNodeKind]
+		word, marked := h.PAXRecords[paxNodeType]
 		if !marked {
 			return Node{}, false, nil
 		}
-		if word != string(KindSocket) || h.Size != 0 {
-			return Node{}, false, fmt.Errorf("%w: %s: %s=%q on a member of %d bytes", ErrNodeDescriptorMalformed, h.Name, paxNodeKind, word, h.Size)
+		if word != string(NodeTypeSocket) || h.Size != 0 {
+			return Node{}, false, fmt.Errorf("%w: %s: %s=%q on a member of %d bytes", ErrNodeDescriptorMalformed, h.Name, paxNodeType, word, h.Size)
 		}
-		return Node{Kind: KindSocket, Perm: perm}, true, nil
+		return Node{NodeType: NodeTypeSocket, Perm: perm}, true, nil
 	}
 	return Node{}, false, nil
 }
 
-// nodeOf describes the special file info stats, as its kind says it is.
-func nodeOf(kind Kind, info fs.FileInfo) Node {
-	n := Node{Kind: kind, Perm: info.Mode() & permBits}
-	if isDeviceKind(kind) {
+// nodeOf describes the special file info stats, as its node type says it is.
+func nodeOf(nodeType NodeType, info fs.FileInfo) Node {
+	n := Node{NodeType: nodeType, Perm: info.Mode() & permBits}
+	if isDeviceType(nodeType) {
 		n.Major, n.Minor = deviceNumbers(info)
 	}
 	return n

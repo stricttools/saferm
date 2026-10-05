@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/stricttools/strictcli/go/strictcli"
 	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // reclassifiedRecord is one record `reclassify-records` changed, or under
@@ -39,8 +39,8 @@ var reclassifyPayloadSchema = map[string]interface{}{
 					"id":   map[string]interface{}{"type": "integer"},
 					"uuid": map[string]interface{}{"type": "string"},
 					"path": map[string]interface{}{"type": "string"},
-					"from": map[string]interface{}{"type": "string", "enum": kindEnum()},
-					"to":   map[string]interface{}{"type": "string", "enum": kindEnum()},
+					"from": map[string]interface{}{"type": "string", "enum": nodeTypeEnum()},
+					"to":   map[string]interface{}{"type": "string", "enum": nodeTypeEnum()},
 				},
 				"required":             []interface{}{"id", "uuid", "path", "from", "to"},
 				"additionalProperties": false,
@@ -103,7 +103,7 @@ func handleReclassify(ctx *strictcli.Context, kwargs map[string]interface{}) str
 		if rec.SymlinkTarget != nil {
 			target = *rec.SymlinkTarget
 		}
-		r, err := archive.PlanReclassification(archiveDir, rec.UUID, rec.Kind, target)
+		r, err := archive.PlanReclassification(archiveDir, rec.UUID, rec.NodeType, target)
 		if err != nil {
 			refusals = append(refusals, fmt.Sprintf("[%d] %s %s: %s", rec.ID, rec.UUID, rec.OriginalPath, err))
 			continue
@@ -155,7 +155,7 @@ var errDatabase = errors.New("updating the record")
 
 // describeSymlinkTarget names what a reclassified symlink points at.
 func describeSymlinkTarget(r *archive.Reclassification) string {
-	if r.To != archive.KindSymlink {
+	if r.To != archive.NodeTypeSymlink {
 		return ""
 	}
 	return " to " + r.SymlinkTarget
@@ -182,7 +182,7 @@ func reclassifyOne(fx *strictcli.Effects, dry bool, database *db.DB, rec *db.Del
 		return fmt.Errorf("writing %s: %w", r.NewEntry, err)
 	}
 	var target *string
-	if r.To == archive.KindSymlink {
+	if r.To == archive.NodeTypeSymlink {
 		target = &r.SymlinkTarget
 	}
 	if err := database.Reclassify(rec.ID, r.From, r.To, target, r.Hash, 0); err != nil {
