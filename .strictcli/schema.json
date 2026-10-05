@@ -82,7 +82,7 @@
   },
   "project_id": "github.com/stricttools/saferm",
   "name": "saferm",
-  "version": "0.10.2",
+  "version": "0.10.3-0.20261005154951-ff23b854e511",
   "help": "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag",
   "env_prefix": "SAFERM",
   "config": true,
@@ -342,7 +342,11 @@
             "enum": [
               "file",
               "directory",
-              "symlink"
+              "symlink",
+              "fifo",
+              "socket",
+              "character-device",
+              "block-device"
             ],
             "type": "string"
           },
@@ -449,7 +453,11 @@
                   "enum": [
                     "file",
                     "directory",
-                    "symlink"
+                    "symlink",
+                    "fifo",
+                    "socket",
+                    "character-device",
+                    "block-device"
                   ],
                   "type": "string"
                 },
@@ -646,7 +654,11 @@
             "enum": [
               "file",
               "directory",
-              "symlink"
+              "symlink",
+              "fifo",
+              "socket",
+              "character-device",
+              "block-device"
             ],
             "type": "string"
           },
@@ -695,7 +707,8 @@
               "restored",
               "purged",
               "restored-then-purged",
-              "entry-missing"
+              "entry-missing",
+              "entry-corrupt"
             ],
             "type": "string"
           },
@@ -908,6 +921,69 @@
         },
         "required": [
           "features"
+        ],
+        "type": "object"
+      }
+    },
+    "reclassify-records": {
+      "name": "reclassify-records",
+      "help": "Give every live record whose archive entry contradicts its kind the kind the entry really holds. saferm versions that did not recognize symlinks or special files recorded them as files; undelete refuses those records and info reports them as entry-corrupt until this runs. Preview it with --dry-run first",
+      "effect": "mutating",
+      "payload_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "reclassified": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "from": {
+                  "enum": [
+                    "file",
+                    "directory",
+                    "symlink",
+                    "fifo",
+                    "socket",
+                    "character-device",
+                    "block-device"
+                  ],
+                  "type": "string"
+                },
+                "id": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "to": {
+                  "enum": [
+                    "file",
+                    "directory",
+                    "symlink",
+                    "fifo",
+                    "socket",
+                    "character-device",
+                    "block-device"
+                  ],
+                  "type": "string"
+                },
+                "uuid": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "uuid",
+                "path",
+                "from",
+                "to"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "reclassified"
         ],
         "type": "object"
       }
