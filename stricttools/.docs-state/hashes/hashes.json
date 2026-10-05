@@ -1,8 +1,8 @@
 {
   "_hash_version": 3,
   "en/architecture.md": {
-    "content": "ca7153b290473303001b9f0824b2c5ce09cfff6bb744a63670e44635834dd501",
-    "description": "07ac3b45d115d73d37fd2329f9a3a53b101c16442edccdb569ac4ab51d3a17af",
+    "content": "aa2578abd4e0e73eba048c4cfd2a48e1779f63c145ea1b60b717c1b8fbaada52",
+    "description": "ba65cd15f6a0f7eb0b4f233d3dc915fd1888e58291410b7198f7ba00dcc8f313",
     "source_docstring": "21b0c5cb4d5ccf029bcfd57a3f6e25a7a690686d9d1ba4b40f03fb496ff26cfd"
   },
   "en/cli-capabilities.md": {
@@ -59,8 +59,8 @@
     "seed_hash": "8c211cb81c3097fddf0a65a4e375e41f5fba17f2b988628447675e3d5f2d7710"
   },
   "en/configuration.md": {
-    "content": "b1ba72adfe2878fdba58fb0bc52474bef9f7a3d9baf6ac1e4cb0e2bb926394bc",
-    "description": "6e3211e031721c6ff748366023c221d76d1e89ef0daa1895d411f2817a969877"
+    "content": "196e99eca3885a5e93e94da8258ab06226b4fe6e84eae613771e5add6ca187a9",
+    "description": "e768eefc2cbbdfd9faca103281b075795c7bb24aebd9d3188cbbc26f941027f4"
   },
   "en/gen-index.md": {
     "content": "77b26abe69da3a05549e49ce64a424607918ca7cfb8913353870f1d7ae523870",
@@ -98,7 +98,7 @@
     "source_docstring": "3cb6e29e2594e8bc8852c8076dbb0f3318670a4ada52097bb423a8ba55d61a42"
   },
   "en/machine-surface.md": {
-    "content": "a63d0e5150c9ec053c00cc7dd4fdad87d35ab735388e9c81e7bcde950b79320b",
-    "description": "57701c166367be02fba75ff67ae5b6768aa42fed068a9a590a8d42f3600d1e77"
+    "content": "db8de117ef3a06cb7afe84be58a87386354e45e6fb31732172cdc8143df74a26",
+    "description": "8ac098512a11af22cb0c2ed659cb7ce9197bd6df03c56d5e8c48ee451a1e3209"
   }
 }
