@@ -419,7 +419,7 @@ func (r *deleteRun) archiveOne(file string) (archived bool, code int) {
 		OriginalName:  filepath.Base(absPath),
 		Size:          result.Size,
 		Hash:          result.Hash,
-		IsDirectory:   result.IsDirectory,
+		Kind:          result.Kind,
 		DeletedAt:     time.Now(),
 		Command:       r.command,
 		Description:   r.description,
@@ -428,7 +428,7 @@ func (r *deleteRun) archiveOne(file string) (archived bool, code int) {
 		OriginVersion: r.originVersion,
 		GroupID:       &r.groupID,
 	}
-	if result.IsSymlink {
+	if result.Kind == archive.KindSymlink {
 		rec.SymlinkTarget = &result.SymlinkTarget
 	}
 
@@ -459,7 +459,7 @@ func (r *deleteRun) archiveOne(file string) (archived bool, code int) {
 
 	// Stage removal in git index if the file was tracked.
 	if r.updateGitIndex && r.gitRoot != "" && gitutil.IsGitTracked(absPath) {
-		if err := gitutil.GitRmCached(absPath, result.IsDirectory); err != nil {
+		if err := gitutil.GitRmCached(absPath, result.Kind == archive.KindDirectory); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: git rm --cached failed for %s: %s\n", file, err)
 		} else if r.verbose {
 			say(r.ctx, "Staged removal in git: %s\n", file)

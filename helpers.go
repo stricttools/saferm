@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
@@ -148,43 +149,28 @@ func openArchiveDBIfPresent(ctx *strictcli.Context, dbPath string) (*db.DB, erro
 	return db.Open(dbPath, retryNotifier(ctx))
 }
 
-// The three shapes saferm archives, spelled once. They are the words `info`
-// has always printed for a record's type, and the closed set the machine
-// surface's `kind` enum declares -- a fourth shape would be a new feature, not
-// a new value.
-const (
-	kindFile      = "file"
-	kindDirectory = "directory"
-	kindSymlink   = "symlink"
-)
-
-// recordKind names a record's archived shape. The symlink test comes first
-// because a symlink to a directory carries both markers, and what saferm
-// archived is the link.
+// recordKind names what a record archived, in the word every surface uses:
+// the record's own `kind` column, which is the one authority for it.
 func recordKind(rec *db.DeletionRecord) string {
-	switch {
-	case rec.SymlinkTarget != nil:
-		return kindSymlink
-	case rec.IsDirectory:
-		return kindDirectory
-	}
-	return kindFile
+	return string(rec.Kind)
 }
 
-// archiveEntryPath is where a record's archived content lives, by the naming
-// the three kinds use: `<uuid>` for a file, `<uuid>.tar.zst` for a tree,
-// `<uuid>.symlink` for a symlink. Spelled once, because `purge` destroys that
-// path and `info` reports whether it is still there, and the two answering
-// differently would be worse than either being wrong.
-func archiveEntryPath(archiveDir string, rec *db.DeletionRecord) string {
-	path := filepath.Join(archiveDir, rec.UUID)
-	switch {
-	case rec.SymlinkTarget != nil:
-		return path + ".symlink"
-	case rec.IsDirectory:
-		return path + ".tar.zst"
+// kindEnum is the closed set the machine payloads' `kind` member declares,
+// generated from [archive.Kinds] so a new kind reaches every schema at once.
+func kindEnum() []interface{} {
+	enum := make([]interface{}, 0, len(archive.Kinds()))
+	for _, k := range archive.Kinds() {
+		enum = append(enum, string(k))
 	}
-	return path
+	return enum
+}
+
+// archiveEntryPath is where a record's archived content lives (see
+// [archive.EntryPath]). Spelled once, because `purge` destroys that path and
+// `info` reports whether it is still there, and the two answering differently
+// would be worse than either being wrong.
+func archiveEntryPath(archiveDir string, rec *db.DeletionRecord) string {
+	return archive.EntryPath(archiveDir, rec.UUID, rec.Kind)
 }
 
 // archiveEntryIsGone reports whether a record's archived content is not on

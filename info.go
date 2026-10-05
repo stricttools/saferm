@@ -72,7 +72,7 @@ var infoPayloadSchema = map[string]interface{}{
 		"original_name":  map[string]interface{}{"type": "string"},
 		"size":           map[string]interface{}{"type": "integer"},
 		"hash":           map[string]interface{}{"type": "string"},
-		"kind":           map[string]interface{}{"type": "string", "enum": []interface{}{kindFile, kindDirectory, kindSymlink}},
+		"kind":           map[string]interface{}{"type": "string", "enum": kindEnum()},
 		"symlink_target": map[string]interface{}{"type": []interface{}{"string", "null"}},
 		"deleted_at":     map[string]interface{}{"type": "string"},
 		"status": map[string]interface{}{"type": "string", "enum": []interface{}{

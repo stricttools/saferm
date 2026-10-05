@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
 )
 
@@ -34,7 +35,7 @@ var listRowSchema = map[string]interface{}{
 		"uuid":       map[string]interface{}{"type": "string"},
 		"path":       map[string]interface{}{"type": "string"},
 		"size":       map[string]interface{}{"type": "integer"},
-		"kind":       map[string]interface{}{"type": "string", "enum": []interface{}{kindFile, kindDirectory, kindSymlink}},
+		"kind":       map[string]interface{}{"type": "string", "enum": kindEnum()},
 		"deleted_at": map[string]interface{}{"type": "string"},
 		"status":     map[string]interface{}{"type": "string", "enum": []interface{}{statusArchived, statusRestored, statusPurged}},
 	},
@@ -163,12 +164,7 @@ func handleList(ctx *strictcli.Context, kwargs map[string]interface{}) strictcli
 		path := rec.OriginalPath
 
 		// Append type indicator for non-regular files.
-		typeIndicator := ""
-		if rec.SymlinkTarget != nil {
-			typeIndicator = " [sym]"
-		} else if rec.IsDirectory {
-			typeIndicator = " [dir]"
-		}
+		typeIndicator := kindIndicator(rec.Kind)
 
 		if len(path)+len(typeIndicator) > 40 {
 			maxPath := 40 - len(typeIndicator)
@@ -243,4 +239,18 @@ func listRows(records []*db.DeletionRecord) []listRow {
 		})
 	}
 	return rows
+}
+
+// kindIndicator is the marker the table appends to a path to say what kind of
+// thing was archived there; a regular file carries none.
+func kindIndicator(k archive.Kind) string {
+	switch k {
+	case archive.KindFile:
+		return ""
+	case archive.KindDirectory:
+		return " [dir]"
+	case archive.KindSymlink:
+		return " [sym]"
+	}
+	panic(fmt.Sprintf("kindIndicator: unknown archive kind %q", string(k)))
 }

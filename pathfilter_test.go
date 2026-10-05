@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
 	"github.com/stricttools/saferm/internal/testutil"
 )
@@ -121,7 +122,7 @@ func TestListPathSelectionMatchesTheInGoFilter(t *testing.T) {
 			ts := base.Add(time.Duration((round*len(paths)+i)/2) * time.Minute)
 			id, err := database.Insert(&db.DeletionRecord{
 				UUID: fmt.Sprintf("uuid-eq-%d", n), OriginalPath: p, OriginalName: filepath.Base(p),
-				Size: 1, Hash: "h", DeletedAt: ts, Description: "equivalence",
+				Size: 1, Hash: "h", Kind: archive.KindFile, DeletedAt: ts, Description: "equivalence",
 			})
 			if err != nil {
 				t.Fatalf("Insert %q failed: %v", p, err)

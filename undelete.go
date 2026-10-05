@@ -40,8 +40,7 @@ type undeletePayload struct {
 }
 
 // undeletePayloadSchema declares the payload above over the framework's closed
-// subset. `kind` is an enum because the three archived shapes are the three
-// saferm has and a fourth would be a new feature, not a new value.
+// subset. `kind` is an enum generated from [archive.Kinds].
 var undeletePayloadSchema = map[string]interface{}{
 	"type": "object",
 	"properties": map[string]interface{}{
@@ -49,7 +48,7 @@ var undeletePayloadSchema = map[string]interface{}{
 		"uuid":          map[string]interface{}{"type": "string"},
 		"original_path": map[string]interface{}{"type": "string"},
 		"restored_to":   map[string]interface{}{"type": "string"},
-		"kind":          map[string]interface{}{"type": "string", "enum": []interface{}{kindFile, kindDirectory, kindSymlink}},
+		"kind":          map[string]interface{}{"type": "string", "enum": kindEnum()},
 		"overwrote":     map[string]interface{}{"type": "boolean"},
 	},
 	"required":             []interface{}{"id", "uuid", "original_path", "restored_to", "kind", "overwrote"},
@@ -178,7 +177,7 @@ func handleUndelete(ctx *strictcli.Context, kwargs map[string]interface{}) stric
 		symlinkTarget = *rec.SymlinkTarget
 	}
 
-	plan := archive.NewRestorePlan(rec.UUID, archiveDir, dest, rec.IsDirectory, symlinkTarget)
+	plan := archive.NewRestorePlan(rec.UUID, archiveDir, dest, rec.Kind, symlinkTarget)
 
 	// A stat, not a read, and it runs in every mode: an entry that is not there
 	// is worth saying so before anything else is decided, rather than surfacing
@@ -188,7 +187,7 @@ func handleUndelete(ctx *strictcli.Context, kwargs map[string]interface{}) stric
 		return strictcli.Exit(ExitArchive)
 	}
 
-	occupied, err := destinationOccupied(dest, rec.IsDirectory)
+	occupied, err := destinationOccupied(dest, rec.Kind == archive.KindDirectory)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: reading the destination %s: %s\n", dest, err)
 		return strictcli.Exit(ExitGeneral)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stricttools/saferm/internal/archive"
 	_ "modernc.org/sqlite"
 )
 
@@ -32,7 +33,7 @@ var ErrOriginEmpty = errors.New("origin fields must be absent or non-empty")
 // recordColumns is the column list every read of a deletion record selects, in
 // the order scanOne scans them. It is spelled once because a query that drifts
 // from the scanner produces a mismatch at run time, not at compile time.
-const recordColumns = `id, uuid, original_path, original_name, size, hash, is_directory, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, purged_at, origin_name, origin_version, group_id`
+const recordColumns = `id, uuid, original_path, original_name, size, hash, kind, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, purged_at, origin_name, origin_version, group_id`
 
 // DB wraps a *sql.DB connection to the saferm SQLite database.
 type DB struct {
@@ -48,7 +49,7 @@ type DeletionRecord struct {
 	OriginalName  string
 	Size          int64
 	Hash          string
-	IsDirectory   bool
+	Kind          archive.Kind // what was archived; the one authority for it
 	DeletedAt     time.Time
 	Command       string // may be empty
 	Description   string
@@ -97,13 +98,19 @@ func open(dbPath string, busyTimeout int, notify RetryNotifier) (*DB, error) {
 		return nil, err
 	}
 
-	// Create tables and indexes, then run schema migrations. Both are write
-	// paths and both are idempotent, so both are retried under contention.
+	// Create the table, run the schema migrations, then create the indexes.
+	// All three are write paths and all are idempotent, so all are retried
+	// under contention. The indexes come last because migration 4 replaces
+	// the table they index.
 	if err := retryBusy(notify, func() error {
-		if _, err := conn.Exec(SchemaSQL); err != nil {
+		if _, err := conn.Exec(deletionsTableSQL("deletions")); err != nil {
 			return err
 		}
-		return migrate(conn)
+		if err := migrate(conn); err != nil {
+			return err
+		}
+		_, err := conn.Exec(indexesSQL)
+		return err
 	}); err != nil {
 		conn.Close()
 		return nil, err
@@ -182,7 +189,76 @@ func migrate(conn *sql.DB) error {
 		}
 	}
 
+	if version < 4 {
+		if err := migrateToKindColumn(conn); err != nil {
+			return fmt.Errorf("migration 4 (kind column): %w", err)
+		}
+	}
+
 	return nil
+}
+
+// migrateToKindColumn is migration 4: one `kind` column replaces is_directory
+// and the inference of a symlink from a non-null symlink_target, so what a
+// record archived is stated once, by the row, and is checked by the schema.
+//
+// SQLite can neither add a column carrying a CHECK constraint nor drop one, so
+// the table is rebuilt: the new definition is created under a temporary name,
+// every row is copied with its kind derived the way the readers used to derive
+// it (a symlink target first, because a link to a directory carried both
+// markers and what saferm archived was the link), the old table is dropped and
+// the new one takes its name. The AUTOINCREMENT counter is carried across, so
+// a numeric id is never issued twice. It is one transaction: a database is
+// either wholly at version 3 or wholly at version 4.
+//
+// A binary from before this migration cannot read or write the rebuilt table,
+// and that is deliberate: saferm is pre-stable and keeps no second spelling of
+// a record's kind for older readers.
+func migrateToKindColumn(conn *sql.DB) error {
+	present, err := hasColumn(conn, "deletions", "kind")
+	if err != nil {
+		return err
+	}
+	tx, err := conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if !present {
+		var seq sql.NullInt64
+		err := tx.QueryRow(`SELECT seq FROM sqlite_sequence WHERE name = 'deletions'`).Scan(&seq)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("reading the id counter: %w", err)
+		}
+		const kept = `id, uuid, original_path, original_name, size, hash, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, purged_at, origin_name, origin_version, group_id`
+		steps := []string{
+			deletionsTableSQL("deletions_rebuild"),
+			`INSERT INTO deletions_rebuild (` + kept + `, kind) SELECT ` + kept + `, CASE` +
+				` WHEN symlink_target IS NOT NULL THEN '` + string(archive.KindSymlink) + `'` +
+				` WHEN is_directory != 0 THEN '` + string(archive.KindDirectory) + `'` +
+				` ELSE '` + string(archive.KindFile) + `' END FROM deletions`,
+			`DROP TABLE deletions`,
+			`ALTER TABLE deletions_rebuild RENAME TO deletions`,
+		}
+		for _, step := range steps {
+			if _, err := tx.Exec(step); err != nil {
+				return err
+			}
+		}
+		if seq.Valid {
+			if _, err := tx.Exec(`DELETE FROM sqlite_sequence WHERE name = 'deletions'`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`INSERT INTO sqlite_sequence (name, seq) VALUES ('deletions', MAX(?, (SELECT IFNULL(MAX(id), 0) FROM deletions)))`, seq.Int64); err != nil {
+				return err
+			}
+		}
+	}
+	if _, err := tx.Exec("PRAGMA user_version = 4"); err != nil {
+		return fmt.Errorf("setting user_version to 4: %w", err)
+	}
+	return tx.Commit()
 }
 
 // hasColumn reports whether a table has a column with the given name.
@@ -235,18 +311,21 @@ func (d *DB) Insert(rec *DeletionRecord) (int64, error) {
 	if err := validateOrigin(rec); err != nil {
 		return 0, err
 	}
+	if _, err := archive.ParseKind(string(rec.Kind)); err != nil {
+		return 0, err
+	}
 
 	var id int64
 	err := d.retry(func() error {
 		result, err := d.conn.Exec(
-			`INSERT INTO deletions (uuid, original_path, original_name, size, hash, is_directory, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, origin_name, origin_version, group_id)
+			`INSERT INTO deletions (uuid, original_path, original_name, size, hash, kind, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target, origin_name, origin_version, group_id)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			rec.UUID,
 			rec.OriginalPath,
 			rec.OriginalName,
 			rec.Size,
 			rec.Hash,
-			boolToInt(rec.IsDirectory),
+			string(rec.Kind),
 			rec.DeletedAt.Format(time.RFC3339),
 			nullableString(rec.Command),
 			rec.Description,
@@ -503,7 +582,7 @@ type scanner interface {
 // scanOne scans a single row from any scanner into a DeletionRecord.
 func scanOne(s scanner) (*DeletionRecord, error) {
 	var rec DeletionRecord
-	var isDir int
+	var kind string
 	var deletedAtStr string
 	var command sql.NullString
 	var metadata sql.NullString
@@ -513,7 +592,7 @@ func scanOne(s scanner) (*DeletionRecord, error) {
 
 	err := s.Scan(
 		&rec.ID, &rec.UUID, &rec.OriginalPath, &rec.OriginalName,
-		&rec.Size, &rec.Hash, &isDir, &deletedAtStr,
+		&rec.Size, &rec.Hash, &kind, &deletedAtStr,
 		&command, &rec.Description, &metadata,
 		&restoredAtStr, &restoredTo, &rec.SymlinkTarget,
 		&purgedAtStr,
@@ -523,7 +602,10 @@ func scanOne(s scanner) (*DeletionRecord, error) {
 		return nil, err
 	}
 
-	rec.IsDirectory = isDir != 0
+	rec.Kind, err = archive.ParseKind(kind)
+	if err != nil {
+		return nil, fmt.Errorf("record %d: %w", rec.ID, err)
+	}
 	rec.DeletedAt, err = time.Parse(time.RFC3339, deletedAtStr)
 	if err != nil {
 		return nil, err
@@ -571,14 +653,6 @@ func scanRecords(rows *sql.Rows) ([]*DeletionRecord, error) {
 		records = append(records, rec)
 	}
 	return records, rows.Err()
-}
-
-// boolToInt converts a bool to an int for SQLite storage.
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 // nullableString returns a sql.NullString for optional string fields.

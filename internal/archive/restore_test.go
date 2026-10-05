@@ -20,8 +20,8 @@ import (
 // destination that already exists. That is not an archive-layer question any
 // more, because answering it needs the record and the caller's stated conflict
 // mode.
-func restoreNow(uuid string, archiveDir string, dest string, isDirectory bool, symlinkTarget string) error {
-	p := NewRestorePlan(uuid, archiveDir, dest, isDirectory, symlinkTarget)
+func restoreNow(uuid string, archiveDir string, dest string, kind Kind, symlinkTarget string) error {
+	p := NewRestorePlan(uuid, archiveDir, dest, kind, symlinkTarget)
 	if err := EntryPresent(p); err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func restoreNow(uuid string, archiveDir string, dest string, isDirectory bool, s
 		if _, err := ExtractTree(p); err != nil {
 			return err
 		}
-	default:
+	case KindFile:
 		if err := os.Rename(p.Entry, p.Dest); err != nil {
 			if !IsCrossDeviceError(err) {
 				return err
@@ -45,6 +45,8 @@ func restoreNow(uuid string, archiveDir string, dest string, isDirectory bool, s
 			return CopyOut(p.Entry, p.Dest)
 		}
 		return nil
+	default:
+		return unknownKind(p.Kind)
 	}
 	return os.Remove(p.Entry)
 }
@@ -111,7 +113,7 @@ func TestExtractTree_FailurePartway_KeepsEntryAndNamesWhatItWrote(t *testing.T) 
 	corruptTarZst(t, entry, "tree")
 
 	dest := filepath.Join(tmpDir, "tree")
-	p := NewRestorePlan(uuid, archiveDir, dest, true, "")
+	p := NewRestorePlan(uuid, archiveDir, dest, KindDirectory, "")
 
 	created, err := ExtractTree(p)
 	if err == nil {
@@ -151,7 +153,7 @@ func TestRollbackExtraction_RemovesWhatTheExtractionCreated(t *testing.T) {
 	corruptTarZst(t, entry, "tree")
 
 	dest := filepath.Join(tmpDir, "tree")
-	p := NewRestorePlan(uuid, archiveDir, dest, true, "")
+	p := NewRestorePlan(uuid, archiveDir, dest, KindDirectory, "")
 
 	created, err := ExtractTree(p)
 	if err == nil {
@@ -185,7 +187,7 @@ func TestRollbackExtraction_LeavesAPreExistingDestination(t *testing.T) {
 	if err := os.Mkdir(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	p := NewRestorePlan(uuid, archiveDir, dest, true, "")
+	p := NewRestorePlan(uuid, archiveDir, dest, KindDirectory, "")
 
 	created, _ := ExtractTree(p)
 	if stuck := RollbackExtraction(created); len(stuck) != 0 {
@@ -226,7 +228,7 @@ func TestRollbackExtraction_ReportsADirectoryHoldingAForeignFile(t *testing.T) {
 	corruptTarZst(t, entry, "tree")
 
 	dest := filepath.Join(tmpDir, "tree")
-	p := NewRestorePlan(uuid, archiveDir, dest, true, "")
+	p := NewRestorePlan(uuid, archiveDir, dest, KindDirectory, "")
 
 	created, err := ExtractTree(p)
 	if err == nil {
@@ -324,15 +326,15 @@ func TestNewRestorePlan_ResolvesTheThreeShapes(t *testing.T) {
 	uuid := NewUUID()
 	archiveDir := "/archive"
 
-	file := NewRestorePlan(uuid, archiveDir, "/dest", false, "")
+	file := NewRestorePlan(uuid, archiveDir, "/dest", KindFile, "")
 	if file.Kind != KindFile || file.Entry != filepath.Join(archiveDir, uuid) {
 		t.Errorf("file plan wrong: kind=%v entry=%s", file.Kind, file.Entry)
 	}
-	dir := NewRestorePlan(uuid, archiveDir, "/dest", true, "")
+	dir := NewRestorePlan(uuid, archiveDir, "/dest", KindDirectory, "")
 	if dir.Kind != KindDirectory || dir.Entry != filepath.Join(archiveDir, uuid+".tar.zst") {
 		t.Errorf("directory plan wrong: kind=%v entry=%s", dir.Kind, dir.Entry)
 	}
-	link := NewRestorePlan(uuid, archiveDir, "/dest", false, "../elsewhere")
+	link := NewRestorePlan(uuid, archiveDir, "/dest", KindSymlink, "../elsewhere")
 	if link.Kind != KindSymlink || link.Entry != filepath.Join(archiveDir, uuid+".symlink") {
 		t.Errorf("symlink plan wrong: kind=%v entry=%s", link.Kind, link.Entry)
 	}
@@ -345,7 +347,7 @@ func TestNewRestorePlan_ResolvesTheThreeShapes(t *testing.T) {
 // anything at the destination is touched.
 func TestEntryPresent_NamesAMissingEntry(t *testing.T) {
 	tmpDir := t.TempDir()
-	p := NewRestorePlan(NewUUID(), tmpDir, filepath.Join(tmpDir, "dest"), false, "")
+	p := NewRestorePlan(NewUUID(), tmpDir, filepath.Join(tmpDir, "dest"), KindFile, "")
 	err := EntryPresent(p)
 	if err == nil {
 		t.Fatal("a missing entry must be reported")
@@ -369,7 +371,7 @@ func TestVerifyEntry_File(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest.txt"), false, "")
+	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest.txt"), KindFile, "")
 
 	if err := VerifyEntry(p, result.Hash); err != nil {
 		t.Fatalf("an untouched entry must verify: %v", err)
@@ -401,7 +403,7 @@ func TestVerifyEntry_Directory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest"), true, "")
+	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest"), KindDirectory, "")
 
 	if err := VerifyEntry(p, result.Hash); err != nil {
 		t.Fatalf("an untouched container must verify: %v", err)
@@ -439,7 +441,7 @@ func TestVerifyEntry_Symlink(t *testing.T) {
 	if result.Hash != "" {
 		t.Fatalf("a symlink archival records no hash, got %q", result.Hash)
 	}
-	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest"), false, result.SymlinkTarget)
+	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest"), KindSymlink, result.SymlinkTarget)
 
 	if err := VerifyEntry(p, result.Hash); err != nil {
 		t.Fatalf("an untouched symlink entry must verify with no hash at all: %v", err)
@@ -467,7 +469,7 @@ func TestVerifyEntry_NoRecordedHashIsARefusal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest.txt"), false, "")
+	p := NewRestorePlan(result.UUID, archiveDir, filepath.Join(tmpDir, "dest.txt"), KindFile, "")
 
 	if err := VerifyEntry(p, ""); !errors.Is(err, ErrUnverifiable) {
 		t.Errorf("an unhashed record must refuse verification, got: %v", err)
@@ -478,7 +480,7 @@ func TestVerifyEntry_NoRecordedHashIsARefusal(t *testing.T) {
 // touched.
 func TestVerifyEntry_MissingEntry(t *testing.T) {
 	tmpDir := t.TempDir()
-	p := NewRestorePlan(NewUUID(), tmpDir, filepath.Join(tmpDir, "dest"), false, "")
+	p := NewRestorePlan(NewUUID(), tmpDir, filepath.Join(tmpDir, "dest"), KindFile, "")
 	if err := VerifyEntry(p, "0000"); !errors.Is(err, ErrEntryMissing) {
 		t.Errorf("expected ErrEntryMissing, got: %v", err)
 	}

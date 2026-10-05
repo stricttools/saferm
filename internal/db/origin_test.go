@@ -163,77 +163,36 @@ func TestInsert_VersionWithoutNameIsRejected(t *testing.T) {
 	}
 }
 
-// A published release is replaced under running sessions: a binary from before
-// this migration keeps opening and writing the database a newer binary has
-// already migrated. That property is what makes the swap safe, and it holds
-// because migration 3 only ADDs nullable columns -- an older writer's INSERT,
-// which names neither the origin columns nor the group column, still inserts.
+// TestMigratedDatabase_RefusesPreKindWrites pins the other side of migration 4:
+// a binary from before the kind column writes is_directory, which the rebuilt
+// table no longer has, so its insert fails outright instead of writing a row
+// whose kind nothing states. saferm is pre-stable and keeps no second spelling
+// of a record's kind for older writers.
 //
 // The old binary's SQL is what is exercised here rather than the old binary
 // itself: building a previous release inside the suite would make every run
-// depend on the network and on a tag that keeps moving. Note the cost decision 4
-// already states -- a pre-upgrade binary does not know the version-requires-name
-// rule, so it bypasses the code-level enforcement entirely.
-func TestMigratedDatabase_AcceptsPreMigrationWrites(t *testing.T) {
+// depend on the network and on a tag that keeps moving.
+func TestMigratedDatabase_RefusesPreKindWrites(t *testing.T) {
 	dbPath := openLegacyDB(t)
 
 	d, err := Open(dbPath, nil)
 	if err != nil {
 		t.Fatalf("Open on a legacy database failed: %v", err)
 	}
-
-	// Every column migration 3 adds must be nullable, or an old writer's
-	// INSERT would be rejected outright.
-	rows, err := d.conn.Query("PRAGMA table_info(deletions)")
-	if err != nil {
-		t.Fatalf("reading columns: %v", err)
-	}
-	added := map[string]bool{"origin_name": true, "origin_version": true, "group_id": true}
-	seen := 0
-	for rows.Next() {
-		var cid, notnull, pk int
-		var name string
-		var ctype, dflt sql.NullString
-		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
-			t.Fatalf("scanning columns: %v", err)
-		}
-		if !added[name] {
-			continue
-		}
-		seen++
-		if notnull != 0 {
-			t.Errorf("column %s is NOT NULL; an older binary's insert would be rejected by it", name)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatalf("reading columns: %v", err)
-	}
-	rows.Close()
-	if seen != len(added) {
-		t.Fatalf("found %d of the %d added columns", seen, len(added))
-	}
 	d.Close()
 
-	// The pre-migration INSERT statement, verbatim: no origin columns, no
-	// group column.
 	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("reopening as an older binary would: %v", err)
 	}
 	defer conn.Close()
-	if _, err := conn.Exec(
+	_, err = conn.Exec(
 		`INSERT INTO deletions (uuid, original_path, original_name, size, hash, is_directory, deleted_at, command, description, metadata, restored_at, restored_to, symlink_target)
 		 VALUES ('old-writer', '/tmp/old.txt', 'old.txt', 3, 'cafe', 0, ?, '', 'written by a pre-migration binary', '{}', NULL, NULL, NULL)`,
 		time.Now().Format(time.RFC3339),
-	); err != nil {
-		t.Fatalf("a pre-migration insert into the migrated database failed: %v", err)
-	}
-
-	// And the pre-migration SELECT still reads its own row back.
-	var uuid string
-	if err := conn.QueryRow(
-		`SELECT uuid FROM deletions WHERE uuid = 'old-writer'`).Scan(&uuid); err != nil {
-		t.Fatalf("a pre-migration read of the migrated database failed: %v", err)
+	)
+	if err == nil {
+		t.Fatal("a pre-kind insert into the migrated database succeeded and wrote a row whose kind nothing states")
 	}
 }
 

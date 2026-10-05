@@ -11,7 +11,7 @@ import (
 
 // A schema saferm creates fresh and a schema it arrives at by walking the
 // migration ladder must be the same schema. They are built by two independent
-// pieces of code -- the CREATE TABLE in SchemaSQL and the ALTER TABLE steps in
+// pieces of code -- the CREATE TABLE in deletionsTableSQL and the steps in
 // migrate -- and a column, a type, a nullability or an index that lands in only
 // one of them is how the two silently fork: a fresh install and an upgraded one
 // then disagree about what a deletion record is, and every test written against

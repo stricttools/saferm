@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stricttools/saferm/internal/archive"
 	"github.com/stricttools/saferm/internal/db"
 	"github.com/stricttools/saferm/internal/testutil"
 )
@@ -18,7 +19,7 @@ func backdate(t *testing.T, homeDir, path string, at time.Time) {
 	d := openArchive(t, homeDir)
 	if _, err := d.Insert(&db.DeletionRecord{
 		UUID: "backdated" + path, OriginalPath: path, OriginalName: path[strings.LastIndex(path, "/")+1:],
-		Size: 1, Hash: "h", DeletedAt: at.In(time.FixedZone("west", -11*3600)), Description: "backdated",
+		Size: 1, Hash: "h", Kind: archive.KindFile, DeletedAt: at.In(time.FixedZone("west", -11*3600)), Description: "backdated",
 	}); err != nil {
 		t.Fatalf("inserting a backdated record: %v", err)
 	}

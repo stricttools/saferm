@@ -92,7 +92,7 @@ func TestArchive_FileRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := restoreNow(result.UUID, archiveDir, restorePath, false, ""); err != nil {
+	if err := restoreNow(result.UUID, archiveDir, restorePath, KindFile, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -166,7 +166,7 @@ func TestArchive_DirectoryRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := restoreNow(result.UUID, archiveDir, restoreDir, true, ""); err != nil {
+	if err := restoreNow(result.UUID, archiveDir, restoreDir, KindDirectory, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -235,7 +235,7 @@ func TestArchive_Symlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := restoreNow(result.UUID, archiveDir, restoreDir, true, ""); err != nil {
+	if err := restoreNow(result.UUID, archiveDir, restoreDir, KindDirectory, ""); err != nil {
 		t.Fatal(err)
 	}
 

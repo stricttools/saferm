@@ -64,22 +64,11 @@ var linkFile = os.Link
 // ArchiveResult holds the outcome of archiving a file or directory.
 type ArchiveResult struct {
 	UUID          string
+	Kind          Kind
 	Hash          string
 	Size          int64
-	IsSymlink     bool
 	SymlinkTarget string
-	IsDirectory   bool
 }
-
-// Kind names what an archival is about to move.
-type Kind int
-
-// The three shapes an archived entry takes on disk.
-const (
-	KindFile Kind = iota
-	KindDirectory
-	KindSymlink
-)
 
 // Plan is everything an archival can determine by reading: what the entry is,
 // where it will land, and (for a symlink) what it points at. Building one
@@ -139,10 +128,8 @@ func NewPlan(path string, archiveDir string, isRecursive bool) (*Plan, error) {
 	switch {
 	case info.IsDir():
 		p.Kind = KindDirectory
-		p.Dest = filepath.Join(archiveDir, p.UUID+".tar.zst")
 	case info.Mode()&os.ModeSymlink != 0:
 		p.Kind = KindSymlink
-		p.Dest = filepath.Join(archiveDir, p.UUID+".symlink")
 		target, err := os.Readlink(path)
 		if err != nil {
 			return nil, fmt.Errorf("reading symlink target: %w", err)
@@ -150,8 +137,8 @@ func NewPlan(path string, archiveDir string, isRecursive bool) (*Plan, error) {
 		p.SymlinkTarget = target
 	default:
 		p.Kind = KindFile
-		p.Dest = filepath.Join(archiveDir, p.UUID)
 	}
+	p.Dest = EntryPath(archiveDir, p.UUID, p.Kind)
 	return p, nil
 }
 
@@ -175,13 +162,14 @@ func Execute(p *Plan) (*ArchiveResult, error) {
 		return nil, fmt.Errorf("creating archive dir: %w", err)
 	}
 	switch p.Kind {
+	case KindFile:
+		return archiveFile(p)
 	case KindDirectory:
 		return archiveDirectory(p)
 	case KindSymlink:
 		return archiveSymlink(p)
-	default:
-		return archiveFile(p)
 	}
+	return nil, unknownKind(p.Kind)
 }
 
 // RemoveSource removes the original an executed [Plan] archived. It is the
@@ -216,10 +204,13 @@ func RemoveSource(p *Plan) error {
 	if err := verifySource(p); err != nil {
 		return err
 	}
-	if p.Kind == KindDirectory {
+	switch p.Kind {
+	case KindDirectory:
 		return os.RemoveAll(p.Source)
+	case KindFile, KindSymlink:
+		return os.Remove(p.Source)
 	}
-	return os.Remove(p.Source)
+	return unknownKind(p.Kind)
 }
 
 // verifySource reports whether the source is still the thing [Execute]
@@ -268,16 +259,21 @@ func verifySource(p *Plan) error {
 		return fmt.Errorf("%s: %w (%v)", p.Dest, ErrArchiveEntryMissing, err)
 	}
 
-	if p.Kind == KindDirectory {
+	switch p.Kind {
+	case KindDirectory:
 		return verifyTreeUnchanged(p)
-	}
-	if p.Kind == KindSymlink {
+	case KindSymlink:
 		return verifySymlinkUnchanged(p)
+	case KindFile:
+		return verifyFileUnchanged(p, cur, entry)
 	}
-	if p.Kind != KindFile {
-		return nil
-	}
+	return unknownKind(p.Kind)
+}
 
+// verifyFileUnchanged reports whether a regular file still holds the bytes
+// that were hashed, and, while its entry is a link to it, whether the entry is
+// still that same inode.
+func verifyFileUnchanged(p *Plan, cur os.FileInfo, entry os.FileInfo) error {
 	if p.linked {
 		// The exact form of the check, available only while the entry and the
 		// source are one inode: whatever else moved, these two must still be
@@ -425,7 +421,7 @@ func archiveSymlink(p *Plan) (*ArchiveResult, error) {
 	// against -- the plan was built from a read taken before this one.
 	p.SymlinkTarget = target
 	p.identity = info
-	return &ArchiveResult{UUID: p.UUID, Hash: "", Size: 0, IsSymlink: true, SymlinkTarget: target}, nil
+	return &ArchiveResult{UUID: p.UUID, Kind: KindSymlink, Hash: "", Size: 0, SymlinkTarget: target}, nil
 }
 
 func archiveFile(p *Plan) (*ArchiveResult, error) {
@@ -468,7 +464,7 @@ func archiveFile(p *Plan) (*ArchiveResult, error) {
 	p.identity = info
 	p.hash = hash
 	p.linked = linked
-	return &ArchiveResult{UUID: p.UUID, Hash: hash, Size: size}, nil
+	return &ArchiveResult{UUID: p.UUID, Kind: KindFile, Hash: hash, Size: size}, nil
 }
 
 func archiveDirectory(p *Plan) (*ArchiveResult, error) {
@@ -518,7 +514,7 @@ func archiveDirectory(p *Plan) (*ArchiveResult, error) {
 	// compressed tree nobody could name and no directory to go back to.
 	p.identity = info
 	p.members = members
-	return &ArchiveResult{UUID: uuid, Hash: hash, Size: totalSize, IsDirectory: true}, nil
+	return &ArchiveResult{UUID: uuid, Kind: KindDirectory, Hash: hash, Size: totalSize}, nil
 }
 
 // RestorePlan is everything a restore can determine by reading: which archive
@@ -544,23 +540,18 @@ type RestorePlan struct {
 }
 
 // NewRestorePlan resolves where a record's content lives and where it is going.
-// The kind is read off the record, not off the archive: a record knows whether
-// it archived a tree and what a symlink pointed at, and both facts must be
-// available before anything is read from disk.
-func NewRestorePlan(uuid string, archiveDir string, dest string, isDirectory bool, symlinkTarget string) *RestorePlan {
-	p := &RestorePlan{UUID: uuid, ArchiveDir: archiveDir, Dest: dest, SymlinkTarget: symlinkTarget}
-	switch {
-	case symlinkTarget != "":
-		p.Kind = KindSymlink
-		p.Entry = filepath.Join(archiveDir, uuid+".symlink")
-	case isDirectory:
-		p.Kind = KindDirectory
-		p.Entry = filepath.Join(archiveDir, uuid+".tar.zst")
-	default:
-		p.Kind = KindFile
-		p.Entry = filepath.Join(archiveDir, uuid)
+// The kind is read off the record, not off the archive: a record knows what it
+// archived and what a symlink pointed at, and both facts must be available
+// before anything is read from disk.
+func NewRestorePlan(uuid string, archiveDir string, dest string, kind Kind, symlinkTarget string) *RestorePlan {
+	return &RestorePlan{
+		UUID:          uuid,
+		ArchiveDir:    archiveDir,
+		Dest:          dest,
+		Kind:          kind,
+		SymlinkTarget: symlinkTarget,
+		Entry:         EntryPath(archiveDir, uuid, kind),
 	}
-	return p
 }
 
 // EntryPresent reports whether the archived copy is there to be restored at
@@ -607,7 +598,8 @@ func VerifyEntry(p *RestorePlan, recordedHash string) error {
 		return err
 	}
 
-	if p.Kind == KindSymlink {
+	switch p.Kind {
+	case KindSymlink:
 		recorded, err := os.ReadFile(p.Entry)
 		if err != nil {
 			return fmt.Errorf("reading the archived symlink entry %s: %w", p.Entry, err)
@@ -617,8 +609,14 @@ func VerifyEntry(p *RestorePlan, recordedHash string) error {
 				p.Entry, ErrEntryDiverged, string(recorded), p.SymlinkTarget)
 		}
 		return nil
+	case KindFile, KindDirectory:
+		return verifyEntryHash(p, recordedHash)
 	}
+	return unknownKind(p.Kind)
+}
 
+// verifyEntryHash checks an entry's bytes against the hash the record carries.
+func verifyEntryHash(p *RestorePlan, recordedHash string) error {
 	if recordedHash == "" {
 		return fmt.Errorf("%s: %w", p.Entry, ErrUnverifiable)
 	}
