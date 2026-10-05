@@ -29,6 +29,7 @@ All saferm data lives under a single root directory (default `~/.saferm/`, overr
     <uuid>          # Regular file (hard-linked, or copied, from the original)
     <uuid>.tar.zst  # Directory (compressed archive)
     <uuid>.symlink  # Symlink metadata (target path as plain text)
+    <uuid>.node     # Special file descriptor (kind, mode, device numbers)
   db/
     saferm.db        # SQLite database (WAL mode)
     saferm.db-wal    # WAL journal (SQLite-managed)
@@ -42,17 +43,19 @@ A deletion passes through five stages: validation, archival, metadata recording,
 
 ### 1. Validation
 
-`archive.NewPlan` stats the target path and determines its type, resolving where archiving it would put it without mutating anything. Directories require the `-r` flag; without it, the operation fails with `ErrRecursiveRequired`. Missing files fail with `ErrFileNotFound` unless `-f` (ignore-missing) is set.
+`archive.NewPlan` stats the target path and classifies it as one of the archive kinds -- a regular file, a directory, a symlink, a FIFO, a socket, a character device, or a block device -- resolving where archiving it would put it without mutating anything. Any other type of file is refused with an `UnsupportedFileError` naming the type. Directories require the `-r` flag; without it, the operation fails with `ErrRecursiveRequired`. Missing files fail with `ErrFileNotFound` unless `-f` (ignore-missing) is set.
 
 ### 2. Archival
 
-The archival strategy depends on the target type. Regular files are hard-linked into the archive, and copied with integrity verification where the link is refused. Directories are compressed into tar archives with zstandard compression. Symlinks store only their target path, since they carry no content of their own:
+The archival strategy depends on the target's kind. Regular files are hard-linked into the archive, and copied with integrity verification where the link is refused. Directories are compressed into tar archives with zstandard compression. Symlinks store only their target path, and special files only a description of themselves, since neither carries content saferm can archive:
 
 **Regular files.** The file is hashed (SHA-256, streaming), then hard-linked into the archive with `os.Link`: no content is copied and the archive entry and the original are the same inode until the original's name is removed. If the link is refused -- `EXDEV` across filesystems, `EPERM` from Linux's `protected_hardlinks` or a filesystem that rejects links, `EOPNOTSUPP`/`ENOSYS` where hard links do not exist, `EMLINK` at the inode's link limit -- the fallback path copies the file and verifies the copy's hash against the pre-computed one. Any other error is reported as itself. The archived file is stored as `<uuid>` (no extension) in the archive directory.
 
-**Directories.** The directory tree is walked to compute total size, then compressed into a `.tar.zst` archive (tar format with zstandard compression via `github.com/klauspost/compress/zstd`). The tar preserves relative paths, permissions, and symlinks within the tree. The original tree stays where it is until the deletion has been recorded; it is then removed with `os.RemoveAll`. Partial archives are cleaned up on failure.
+**Directories.** The directory tree is walked to compute total size, then compressed into a `.tar.zst` archive (tar format with zstandard compression via `github.com/klauspost/compress/zstd`). The tar preserves relative paths, permissions, symlinks, and special files within the tree: a FIFO or a device is written with its own tar typeflag, and a socket, which tar has no typeflag for, as a zero-length regular member carrying the PAX record `SAFERM.nodetype=socket`. Any other type of file in the tree refuses the archival. The original tree stays where it is until the deletion has been recorded; it is then removed with `os.RemoveAll`. Partial archives are cleaned up on failure.
 
 **Symlinks.** The symlink's target path is read via `os.Readlink` and written to a `.symlink` metadata file in the archive directory. The symlink itself is removed after the deletion is recorded, like every other kind. No content is archived because symlinks have no content -- the target path is sufficient for reconstruction.
+
+**Special files.** A FIFO, a socket, or a character or block device is never opened: reading a FIFO would block until a writer appeared and then drain what it sent, a socket cannot be opened at all, and a device would be read to its end. What the archive keeps is a `.node` descriptor of the node's kind, its mode bits, and for a device its major and minor numbers, and the record's hash is the descriptor's SHA-256. Every read of a regular file's content -- the hash, the copy fallback, a tree member going into the tar -- opens it non-blocking and without following a symlink and refuses anything the opened descriptor shows is not a regular file, so a path swapped for a FIFO between the stat and the read fails the archival instead of blocking it.
 
 ### 3. Metadata recording
 
@@ -104,7 +107,8 @@ The version-requires-name invariant -- a record may not carry `origin_version` w
 - **Identity**, for every kind: the path must still resolve to the same inode (`os.SameFile` against the `os.FileInfo` taken at archival). A path that was renamed over or removed and recreated in the meantime is a different file, and removing it would destroy something nothing archived.
 - **The archive entry's existence**, for every kind: the entry must still be there (`os.Lstat`, never `os.Stat` -- a `Stat` follows a symlink, so an entry replaced by a link back at the source would satisfy `os.SameFile`). The record is inserted before the removal, which is what makes the archived copy findable -- including by a concurrent `saferm purge --all`, which will select that row and destroy its blob perfectly legitimately. Removing the source with the entry gone would leave no copy of the content anywhere.
 - **Content**, for regular files: the archive entry is a hard link, so a write through the original path rewrites the archived bytes and leaves the recorded hash describing content that no longer exists. The size and mtime as of the hash are compared against the current stat, and the file is re-hashed only when they differ, so a plain `touch` is not mistaken for a rewrite.
-- **Coverage, for directories**: a tree's identity is one inode and says nothing about what is inside it, so the tree is walked again against the member list the archiving walk recorded (every path, with the size and mtime it had as it went into the tar). A path the tar does not hold at all, or a regular file whose size or mtime no longer matches, refuses the removal -- `os.RemoveAll` would otherwise destroy a file written into the tree after the tar was closed, which is in no archive anywhere. A path the tar holds and the tree no longer does is not a refusal: the archive then covers more than the tree, which is what a completed archival aims for.
+- **The node, for special files**: the kind, mode bits, and device numbers must still be the ones the descriptor holds, because the identity check can be fooled by a reused inode number.
+- **Coverage, for directories**: a tree's identity is one inode and says nothing about what is inside it, so the tree is walked again against the member list the archiving walk recorded (every path, with its kind and the size and mtime it had as it went into the tar). A path the tar does not hold at all, a path whose kind changed, a regular file whose size or mtime no longer matches, or a special file whose mode or device numbers changed refuses the removal -- `os.RemoveAll` would otherwise destroy a file written into the tree after the tar was closed, which is in no archive anywhere. A path the tar holds and the tree no longer does is not a refusal: the archive then covers more than the tree, which is what a completed archival aims for.
 
 A mismatch refuses the removal and exits `6` (`ExitArchive`). Where the record is still truthful -- a replaced path, or a diverged source whose entry is an independent copy -- nothing is undone, and the failure names both what the record holds and what the path holds now. Where it is not -- a hard-linked file written through, whose recorded hash no longer matches the blob -- the archive entry is discarded, which drops one of two names for the inode and leaves the file in place with its current content, and the caller is told the row now names nothing and to run the delete again. Where the entry itself is gone or is no longer what was archived (`ErrArchiveEntryMissing`, `ErrArchiveEntryReplaced`), nothing is removed and nothing is discarded: the row names nothing, the source is the only copy of its content left, and the message says so rather than claiming the record holds the archived content. Where a tree changed under the archival (`ErrDirectoryChanged`), the tree is left whole -- including the part nothing archived -- and the incomplete `.tar.zst` is discarded, so the row names nothing and the caller is told to run the delete again.
 
@@ -126,11 +130,12 @@ Restoration reverses the archival process, moving content from the archive back 
 
 ### The step list
 
-A restore is one list of steps built from one `RestorePlan`, walked by both modes: in `--dry-run` every step is recorded on the effects handle, otherwise the handle performs the steps it can and the archive package performs the rest. The effects handle's closed method set covers removing an occupied destination, making the parent directory, renaming a file out of the archive and dropping a consumed entry; it has no primitive for recreating a symlink or extracting a tar+zstd tree, so those two are described on the handle and performed beside it. Building the list once is what keeps the preview and the real restore from drifting apart — the real path used to bypass the handle entirely, with only the dry branch minting anything.
+A restore is one list of steps built from one `RestorePlan`, walked by both modes: in `--dry-run` every step is recorded on the effects handle, otherwise the handle performs the steps it can and the archive package performs the rest. The effects handle's closed method set covers removing an occupied destination, making the parent directory, renaming a file out of the archive and dropping a consumed entry; it has no primitive for recreating a symlink, recreating a special file, or extracting a tar+zstd tree, so those are described on the handle and performed beside it. Building the list once is what keeps the preview and the real restore from drifting apart — the real path used to bypass the handle entirely, with only the dry branch minting anything.
 
 - **Regular files**: `Rename` from the archive to the destination, with a cross-device copy fallback that removes the entry only once the copy is complete
 - **Directories**: extract the `.tar.zst` into the destination (stripping the top-level directory entry so contents land directly there), then remove the container
 - **Symlinks**: recreate the link via `os.Symlink` from the recorded target, then remove the `.symlink` entry
+- **Special files**: decode the `.node` descriptor, refuse one whose kind is not the record's, recreate the node with `mkfifo` or `mknod` and its exact mode bits, then remove the descriptor. A socket is recreated on Linux only. A device needs the privilege `mknod` asks for (`CAP_MKNOD` on Linux, root on macOS); without it the restore fails and the descriptor stays, so the record is still restorable. A FIFO, socket, or device inside a tree is recreated the same way during the extraction, and a tar member type the extraction has no case for fails the restore rather than being skipped
 
 The ordering carries one invariant: **the archived copy is consumed last**. A file's move out of the archive is itself the consumption and cannot half-happen; every other kind writes the destination first and drops the entry only once that has worked. Any failure therefore leaves the entry in place and the record restorable.
 
@@ -144,15 +149,16 @@ An **empty destination directory is not a conflict for a tree**: it is that tree
 
 An overwrite reads the archived copy through once **before** the destination is touched. Restoration used to remove the destination first and read the archive afterwards, so a corrupted or truncated copy cost the caller whatever was standing there.
 
-The recorded hash means three different things, and verification defines all three:
+The recorded hash means a different thing per kind, and verification defines each:
 
 | Kind | What the record holds | What verification proves |
 | --- | --- | --- |
 | Regular file | SHA-256 of the file's content, and the entry *is* that file | Exact: a byte that rotted in the archive is found |
 | Directory | SHA-256 of the `.tar.zst` **container** | The container arrived intact. There is no per-member digest anywhere in the archive, so nothing here can promise anything about individual extracted members |
 | Symlink | Nothing — a symlink has no content and its recorded hash is empty by construction | The entry still names the target the record names. A hash comparison would fail on every symlink ever archived |
+| Special file | SHA-256 of the `.node` descriptor, which is everything the archive holds of the node | Exact, and the descriptor decodes to the kind the record names |
 
-A file or tree whose record carries no hash at all is `ErrUnverifiable` rather than a pass: the caller asked to destroy a destination on the strength of a check nothing can make.
+A file, tree, or special file whose record carries no hash at all is `ErrUnverifiable` rather than a pass: the caller asked to destroy a destination on the strength of a check nothing can make.
 
 Verification is proportional. A restore into an absent or empty destination gets **no** verify pass — a corrupt copy simply fails the restore, which destroys nothing and keeps the copy for a retry.
 
@@ -168,7 +174,7 @@ If the destination is inside a git repository and `--update-git-index` is true (
 
 ## Purge (permanent destruction)
 
-Purging permanently removes the archived content while preserving the metadata record. The archive file (`<uuid>`, `<uuid>.tar.zst`, or `<uuid>.symlink`) is deleted from disk, and the database record's `purged_at` field is set. This means `saferm list --all` still shows the deletion history, but `saferm undelete` will refuse to restore a purged item because the content is gone.
+Purging permanently removes the archived content while preserving the metadata record. The archive file (`<uuid>`, `<uuid>.tar.zst`, `<uuid>.symlink`, or `<uuid>.node`) is deleted from disk, and the database record's `purged_at` field is set. This means `saferm list --all` still shows the deletion history, but `saferm undelete` will refuse to restore a purged item because the content is gone.
 
 Records can be selected for purging by record UUID or numeric ID, by age (`--older-than`), by size (`--larger-than`), or all at once (`--all`). The age, size, and all-at-once selections choose among the records still in the archive; a restored record's content is back where it came from and a purged record's is already destroyed, so neither is selected. The dry run's `freeing ~<size>` sums what the selected archive entries occupy on disk as the filesystem allocates them -- a directory's `.tar.zst`, not the tree it was made from -- and leaves out a file entry another name outside the archive still links, because removing the archive's name frees nothing while that link remains; it says how many such entries were selected. At least one of those four must be given, and that rule is a declaration rather than a check inside the handler: the constraint `purge-selection` is registered with the command, rendered in `saferm purge --help`, published in the dumped schema, and enforced by the parser before dispatch. A purge that selects nothing is refused with `constraint "purge-selection": at least one of targets, --older-than, --larger-than, --all is required` and exits 1. `--all` counts only when it is true, so `--no-all` declines the option rather than choosing one, and the refusal says so.
 
@@ -194,7 +200,7 @@ Restoration also handles cross-device: `restoreFile` attempts `os.Rename` first 
 
 saferm uses SHA-256 hashing to verify file integrity at two points in the deletion lifecycle. This ensures that archived content is identical to the original, catching corruption from disk errors, interrupted copies, or filesystem bugs before the original file is removed. The hashing is streaming-based, processing data through an `io.Copy` pipeline into `crypto/sha256`, so memory usage remains constant regardless of file size:
 
-1. **At archival time**: every regular file is hashed before being moved or copied. The hash is stored in the database record. For directories, the hash covers the `.tar.zst` archive file itself.
+1. **At archival time**: every regular file is hashed before being moved or copied. The hash is stored in the database record. For directories, the hash covers the `.tar.zst` archive file itself, and for special files the `.node` descriptor.
 
 2. **At cross-device copy time**: after copying a file to the archive, the copy is hashed and compared against the pre-archival hash. A mismatch aborts the operation and removes the corrupt copy.
 
@@ -231,9 +237,11 @@ The busy timeout covers brief overlaps; a lock held longer than five seconds sti
 
 ### Schema migrations
 
-The database uses `PRAGMA user_version` to track schema version. Migrations are idempotent: each checks whether the target column already exists (via `PRAGMA table_info`) before issuing `ALTER TABLE`. This prevents errors when multiple processes race through the migration path on first run.
+The database uses `PRAGMA user_version` to track schema version. Migrations are idempotent: each checks whether the target column already exists (via `PRAGMA table_info`) before changing anything. This prevents errors when multiple processes race through the migration path on first run.
 
-Every schema change lands twice -- in the `CREATE TABLE` that builds a fresh database, and in the version ladder that upgrades an existing one -- or the two shapes silently fork. The ladder can express exactly one thing, adding a nullable column, and that limit is also what makes a release safe to install under running sessions: the new columns are nullable and unconstrained, so a binary from before a migration keeps opening and writing a database a newer binary has already migrated. Its inserts name no new column and are accepted as they always were; what it cannot do is honour an invariant it does not know about, which is why the origin rule is enforced in code by whichever binary is writing.
+Every schema change lands twice -- in the `CREATE TABLE` that builds a fresh database, and in the version ladder that upgrades an existing one -- or the two shapes silently fork. Migrations 1 to 3 each add a nullable column. Migration 4 rebuilds the table in one transaction: a `kind` column, checked against the list of archive kinds, replaces `is_directory` and the inference of a symlink from a non-null `symlink_target`, every row's kind is derived the way the readers derived it, and the id counter is carried across. A saferm from before migration 4 can neither read nor write the rebuilt table, so every saferm on a machine is upgraded together.
+
+Records written before saferm recognized symlinks and special files hold a symlink or a FIFO at `<uuid>` under a file record. `info` reports such a record as `entry-corrupt` and `undelete` refuses it; `saferm reclassify-records` rewrites each such entry into its real kind's form and updates the record to match, refusing the whole run before changing anything when a contradiction is not one it can resolve.
 
 ## Security considerations
 

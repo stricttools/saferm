@@ -631,7 +631,8 @@ type RestorePlan struct {
 	SymlinkTarget string
 
 	// Entry is the archive file holding the content: the bare uuid for a
-	// regular file, uuid.tar.zst for a tree, uuid.symlink for a link.
+	// regular file, uuid.tar.zst for a tree, uuid.symlink for a link,
+	// uuid.node for a special file (see [EntryPath]).
 	Entry string
 }
 

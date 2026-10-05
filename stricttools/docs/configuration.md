@@ -105,6 +105,7 @@ The archive directory is created automatically with `0700` permissions if it doe
 - **Files** are stored as bare files named by UUID (e.g., `archive/a1b2c3d4-...`)
 - **Directories** are compressed into `.tar.zst` archives (e.g., `archive/a1b2c3d4-....tar.zst`)
 - **Symlinks** store their target path in a `.symlink` metadata file (e.g., `archive/a1b2c3d4-....symlink`)
+- **Special files** (FIFOs, sockets, character and block devices) are stored as a `.node` descriptor of their kind, mode, and device numbers (e.g., `archive/a1b2c3d4-....node`); nothing is read from them
 
 Cross-device moves (when the archive is on a different filesystem) are handled via copy-and-verify with SHA-256 integrity checks.
 
@@ -139,14 +140,14 @@ The database has a single `deletions` table that stores the complete lifecycle o
 | `original_name` | TEXT | Base name of the deleted file |
 | `size` | INTEGER | File size in bytes (total for directories) |
 | `hash` | TEXT | SHA-256 hex digest |
-| `is_directory` | INTEGER | 1 if the entry was a directory |
+| `kind` | TEXT | What was archived: `file`, `directory`, `symlink`, `fifo`, `socket`, `character-device`, or `block-device`, checked by the schema |
 | `deleted_at` | TEXT | RFC 3339 timestamp of deletion |
 | `command` | TEXT | Original rm command being replaced (optional) |
 | `description` | TEXT | Mandatory explanation of why the deletion happened |
 | `metadata` | TEXT | JSON blob with environment, git context, and process metadata |
 | `restored_at` | TEXT | RFC 3339 timestamp of restoration (null if not restored) |
 | `restored_to` | TEXT | Path where the file was restored (null if not restored) |
-| `symlink_target` | TEXT | Original symlink target (null if not a symlink) |
+| `symlink_target` | TEXT | Original symlink target; set exactly when `kind` is `symlink` |
 | `purged_at` | TEXT | RFC 3339 timestamp of permanent removal (null if not purged) |
 
 Indexes exist on `original_path` and `deleted_at` for query performance.
