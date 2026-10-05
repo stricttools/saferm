@@ -45,7 +45,7 @@ The **exit code is still the verdict**. A payload is what a successful run produ
 
 ## The consumer verbs
 
-`delete`, `undelete`, `list`, `info`, `usage`, and `reclassify-records` each declare a payload schema and supply their value in both modes -- the payload is not a machine-mode feature, it is simply invisible outside machine mode. `purge` deliberately declares none: it is the one irreversible operation and the one that asks for consent, and nothing should be driving it from a parsed document.
+`delete`, `undelete`, `list`, `info`, and `usage` each declare a payload schema and supply their value in both modes -- the payload is not a machine-mode feature, it is simply invisible outside machine mode. `purge` deliberately declares none: it is the one irreversible operation and the one that asks for consent, and nothing should be driving it from a parsed document.
 
 What the envelope's table states is the exact rule, and it is not "every run": **a payload is what a run that reached its answer produced.** A run that failed before it had one carries `payload: null` and says why in the exit code and the diagnostics -- a `--meta` value that is not `key=value` never gets past argument handling (exit 2), and an identifier naming no record never resolves one to answer about (exit 3). `delete` is the verb whose answer exists before the run is over, and the rule holds there too: an aborted batch names everything it archived above the failure.
 
@@ -81,12 +81,12 @@ Three properties a caller can rely on:
   "uuid": "6f1c0e2a-6c9e-4a24-9d1f-2b0f3f5b7c11",
   "original_path": "/home/user/project/old-config.yaml",
   "restored_to": "/tmp/inspect/old-config.yaml",
-  "kind": "file",
+  "node_type": "file",
   "overwrote": false
 }
 ```
 
-`restored_to` is where the content actually went, which differs from `original_path` whenever `--destination` was used. `overwrote` says whether something was standing there and was replaced -- the one fact nothing on the filesystem records afterwards. `kind` is one of `file`, `directory`, `symlink`, `fifo`, `socket`, `character-device`, and `block-device`, the same set on every payload that carries a kind.
+`restored_to` is where the content actually went, which differs from `original_path` whenever `--destination` was used. `overwrote` says whether something was standing there and was replaced -- the one fact nothing on the filesystem records afterwards. `node_type` is one of `file`, `directory`, `symlink`, `fifo`, `socket`, `character-device`, and `block-device`, the same set on every payload that carries a node type.
 
 Under `--dry-run` the payload names where the content *would* go; the envelope's `dry_run` flag is what tells the two apart.
 
@@ -103,7 +103,7 @@ Under `--dry-run` the payload names where the content *would* go; the envelope's
       "uuid": "6f1c0e2a-6c9e-4a24-9d1f-2b0f3f5b7c11",
       "path": "/home/user/project/db/migrations",
       "size": 14382,
-      "kind": "directory",
+      "node_type": "directory",
       "deleted_at": "2026-08-13T14:32:01Z",
       "status": "archived"
     }
@@ -150,7 +150,7 @@ Every size is in bytes. The `*_disk_bytes` figures are what the files occupy as 
   "original_name": "old-config.yaml",
   "size": 612,
   "hash": "9f86d081...",
-  "kind": "file",
+  "node_type": "file",
   "symlink_target": null,
   "deleted_at": "2026-08-13T14:32:01Z",
   "status": "restorable",
@@ -176,21 +176,9 @@ Every nullable member is always present with `null` as its value: the difference
 | `purged` | The archived content was destroyed; the metadata survives. |
 | `restored-then-purged` | Both happened, in that order. |
 | `entry-missing` | Nothing restored or purged it and the archived copy is not there. An archival that meets a changed source inside its window produces this state deliberately: the row names nothing, and `purge` is how it is cleared. |
-| `entry-corrupt` | The archived copy is there but is not what the record's kind says it is, so `undelete` refuses it: a symlink or a FIFO that a saferm from before those kinds were recognized recorded as a file, or a special file's descriptor of another kind. `reclassify-records` resolves the first case. |
+| `entry-corrupt` | The archived copy is there but is not what the record's node type says it is, so `undelete` refuses it: a special file's descriptor of another node type, or an entry changed by hand. The symlinks and FIFOs saferm versions from before the `node_type` column recorded as files are repaired by the migration that adds the column, so they never reach this status. |
 
 The captured metadata blob -- the environment, the git context, the resolved ancestry chain -- is deliberately not on the payload. It is an open-ended document, and declaring it in a closed schema would mean either freezing it or describing it dishonestly. `saferm info` prints it.
-
-### reclassify-records
-
-```json
-{
-  "reclassified": [
-    {"id": 945, "uuid": "d3b1b360-8ca9-444a-a838-5640d9172af4", "path": "/home/user/project/ui.js", "from": "file", "to": "symlink"}
-  ]
-}
-```
-
-`reclassified` holds one entry per record the run changed, oldest first, with the kind it was recorded as and the kind it now has; under `--dry-run` it is every record the run would change. A run that finds nothing to change answers with an empty list, and a run refused because a contradiction is not one it can resolve changes nothing and answers with an empty list and exit 6.
 
 ## capabilities
 
@@ -199,7 +187,7 @@ saferm --json capabilities
 ```
 
 ```json
-{"features": ["git-index-switches", "group-id", "list-limit", "list-since", "machine-payloads", "on-conflict-modes", "on-error-modes", "reclassify-records", "restore-destination", "trace-origin", "usage-report", "uuid-handles", "kind-file", "kind-directory", "kind-symlink", "kind-fifo", "kind-socket", "kind-character-device", "kind-block-device"]}
+{"features": ["git-index-switches", "group-id", "list-limit", "list-since", "machine-payloads", "on-conflict-modes", "on-error-modes", "restore-destination", "trace-origin", "usage-report", "uuid-handles", "node-type-file", "node-type-directory", "node-type-symlink", "node-type-fifo", "node-type-socket", "node-type-character-device", "node-type-block-device"]}
 ```
 
 The verb reads nothing -- no database, no archive directory, no configuration -- so it answers on a machine where saferm has never run, and it does not create saferm's state directory in order to answer.
@@ -208,11 +196,10 @@ The verb reads nothing -- no database, no archive directory, no configuration --
 |---------|------------------------|
 | `git-index-switches` | Both halves of the round trip can leave the git index alone: `delete --no-update-git-index` and `undelete --no-update-git-index`. |
 | `group-id` | Every delete invocation stamps one group identifier on every record it writes; it is on `delete`'s and `info`'s payloads. |
-| `machine-payloads` | `delete`, `undelete`, `list`, `info`, `usage`, and `reclassify-records` answer with the payloads specified above. |
+| `machine-payloads` | `delete`, `undelete`, `list`, `info`, and `usage` answer with the payloads specified above. |
 | `on-conflict-modes` | `undelete --on-conflict overwrite\|abort`, required exactly when the destination is occupied. |
 | `on-error-modes` | `delete --on-error abort\|continue`, mandatory with no default. |
-| `reclassify-records` | `reclassify-records` gives every live record whose archived copy contradicts its kind the kind that copy holds. |
-| `kind-<kind>` | One feature for each kind saferm archives and restores (`kind-file` through `kind-block-device`, the values of `kind` above). A consumer that hands saferm a FIFO asks for `kind-fifo`. |
+| `node-type-<type>` | One feature for each node type saferm archives and restores (`node-type-file` through `node-type-block-device`, the values of `node_type` above). A consumer that hands saferm a FIFO asks for `node-type-fifo`. |
 | `restore-destination` | `undelete --destination <path>` restores elsewhere and records where the content went. |
 | `list-limit` | `list` shows the newest entries up to `--limit` (50 unless stated; 0 for all) and its payload is `{"total", "rows"}`. |
 | `list-since` | `list --since <duration>` keeps entries deleted within the duration. |

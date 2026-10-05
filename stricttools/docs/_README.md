@@ -104,15 +104,15 @@ Either way the identifiers of everything already archived are on stdout before t
 
 ## Driving saferm from a program
 
-`--json` puts saferm in machine mode, where stdout carries one document and nothing else -- the envelope -- and everything saferm would have printed is carried inside it. `delete`, `undelete`, `list`, `info`, `usage`, and `reclassify-records` each answer with a structured payload: the records a delete wrote (both identifiers, path and size, plus the invocation's group id) and every path it could not archive with the reason, where a restore put the content, the rows of a listing with the total the selection matched, the full record with its status, origin and group, the archive's disk use in bytes, and the records a reclassification changed. `purge` deliberately has no payload.
+`--json` puts saferm in machine mode, where stdout carries one document and nothing else -- the envelope -- and everything saferm would have printed is carried inside it. `delete`, `undelete`, `list`, `info`, and `usage` each answer with a structured payload: the records a delete wrote (both identifiers, path and size, plus the invocation's group id) and every path it could not archive with the reason, where a restore put the content, the rows of a listing with the total the selection matched, the full record with its status, origin, and group, and the archive's disk use in bytes. `purge` deliberately has no payload.
 
 ```
 $ saferm --json capabilities
 {"interface_version":3,"app":"saferm","command":"capabilities","exit_code":0,
  "payload":{"features":["git-index-switches","group-id","list-limit","list-since","machine-payloads",
- "on-conflict-modes","on-error-modes","reclassify-records","restore-destination","trace-origin","usage-report",
- "uuid-handles","kind-file","kind-directory","kind-symlink","kind-fifo","kind-socket","kind-character-device",
- "kind-block-device"]}, ...}
+ "on-conflict-modes","on-error-modes","restore-destination","trace-origin","usage-report","uuid-handles",
+ "node-type-file","node-type-directory","node-type-symlink","node-type-fifo","node-type-socket",
+ "node-type-character-device","node-type-block-device"]}, ...}
 ```
 
 `capabilities` is how a program decides what this saferm can do. It names features, never a version -- a locally built binary reports a Go pseudo-version no semver parser accepts -- and a missing verb or a missing feature means the same thing as saferm not being installed. The verb reads nothing, so it answers on a machine where saferm has never run.
