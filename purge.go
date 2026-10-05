@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stricttools/strictcli/go/strictcli"
 	"github.com/stricttools/saferm/internal/db"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 func registerPurgeCmd(app *strictcli.App) {

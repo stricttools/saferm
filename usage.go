@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stricttools/strictcli/go/strictcli"
 	"github.com/stricttools/saferm/internal/db"
+	"github.com/stricttools/strictcli/go/strictcli"
 )
 
 // usageGroup is one row of a breakdown: how many records still in the archive
