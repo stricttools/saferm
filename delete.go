@@ -614,20 +614,35 @@ func recordArchival(ctx *strictcli.Context, fx *strictcli.Effects, plan *archive
 	//     write is declared with no content, which is the only thing that is
 	//     true about it here; strictcli's write has no way to say "size
 	//     unknown", so the log renders that absence as 0.
-	var content []byte
-	switch plan.Kind {
-	case archive.KindSymlink:
-		content = []byte(plan.SymlinkTarget)
-	case archive.KindFile:
-		info, err := os.Lstat(plan.Source)
-		if err != nil {
-			return err
-		}
-		content = make([]byte, info.Size())
+	//   - A special file's entry is its `.node` descriptor, which the plan
+	//     already holds byte for byte: nothing is read from the node itself.
+	content, err := previewEntryContent(plan)
+	if err != nil {
+		return err
 	}
 	if _, err := fx.Write(plan.Dest, content, strictcli.Resource("saferm-entry:"+plan.UUID)); err != nil {
 		return err
 	}
-	_, err := fx.Remove(plan.Source, strictcli.Resource("path:"+plan.Source))
+	_, err = fx.Remove(plan.Source, strictcli.Resource("path:"+plan.Source))
 	return err
+}
+
+// previewEntryContent is what a preview declares the archive entry will hold,
+// per kind, as [recordArchival] describes.
+func previewEntryContent(plan *archive.Plan) ([]byte, error) {
+	switch plan.Kind {
+	case archive.KindSymlink:
+		return []byte(plan.SymlinkTarget), nil
+	case archive.KindFile:
+		info, err := os.Lstat(plan.Source)
+		if err != nil {
+			return nil, err
+		}
+		return make([]byte, info.Size()), nil
+	case archive.KindDirectory:
+		return nil, nil
+	case archive.KindFIFO, archive.KindSocket, archive.KindCharacterDevice, archive.KindBlockDevice:
+		return plan.NodeDescriptor(), nil
+	}
+	return nil, fmt.Errorf("previewing the archival of %s: unknown archive kind %q", plan.Source, string(plan.Kind))
 }

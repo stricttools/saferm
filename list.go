@@ -251,6 +251,14 @@ func kindIndicator(k archive.Kind) string {
 		return " [dir]"
 	case archive.KindSymlink:
 		return " [sym]"
+	case archive.KindFIFO:
+		return " [fifo]"
+	case archive.KindSocket:
+		return " [sock]"
+	case archive.KindCharacterDevice:
+		return " [chr]"
+	case archive.KindBlockDevice:
+		return " [blk]"
 	}
 	panic(fmt.Sprintf("kindIndicator: unknown archive kind %q", string(k)))
 }

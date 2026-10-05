@@ -93,6 +93,10 @@ type Plan struct {
 	hash     string
 	linked   bool
 
+	// node is what a special file's descriptor holds, read off the stat the
+	// plan was built from and taken again by [Execute].
+	node Node
+
 	// What went into the tar, for a directory: every path the archiving walk
 	// wrote, with the size and mtime it had when it was written. A tree's
 	// identity is one inode and says nothing about its contents, so this is the
@@ -124,19 +128,23 @@ func NewPlan(path string, archiveDir string, isRecursive bool) (*Plan, error) {
 		return nil, ErrRecursiveRequired
 	}
 
-	p := &Plan{Source: path, ArchiveDir: archiveDir, UUID: NewUUID()}
-	switch {
-	case info.IsDir():
-		p.Kind = KindDirectory
-	case info.Mode()&os.ModeSymlink != 0:
-		p.Kind = KindSymlink
+	kind, err := Classify(path, info.Mode())
+	if err != nil {
+		return nil, err
+	}
+	p := &Plan{Source: path, ArchiveDir: archiveDir, UUID: NewUUID(), Kind: kind}
+	switch kind {
+	case KindSymlink:
 		target, err := os.Readlink(path)
 		if err != nil {
 			return nil, fmt.Errorf("reading symlink target: %w", err)
 		}
 		p.SymlinkTarget = target
+	case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+		p.node = nodeOf(kind, info)
+	case KindFile, KindDirectory:
 	default:
-		p.Kind = KindFile
+		return nil, unknownKind(kind)
 	}
 	p.Dest = EntryPath(archiveDir, p.UUID, p.Kind)
 	return p, nil
@@ -168,8 +176,16 @@ func Execute(p *Plan) (*ArchiveResult, error) {
 		return archiveDirectory(p)
 	case KindSymlink:
 		return archiveSymlink(p)
+	case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+		return archiveNode(p)
 	}
 	return nil, unknownKind(p.Kind)
+}
+
+// NodeDescriptor is the descriptor [Execute] writes for a special file, as of
+// the plan. It reads nothing, so a dry run can show the real bytes.
+func (p *Plan) NodeDescriptor() []byte {
+	return EncodeNode(p.node)
 }
 
 // RemoveSource removes the original an executed [Plan] archived. It is the
@@ -207,7 +223,7 @@ func RemoveSource(p *Plan) error {
 	switch p.Kind {
 	case KindDirectory:
 		return os.RemoveAll(p.Source)
-	case KindFile, KindSymlink:
+	case KindFile, KindSymlink, KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
 		return os.Remove(p.Source)
 	}
 	return unknownKind(p.Kind)
@@ -266,8 +282,22 @@ func verifySource(p *Plan) error {
 		return verifySymlinkUnchanged(p)
 	case KindFile:
 		return verifyFileUnchanged(p, cur, entry)
+	case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+		return verifyNodeUnchanged(p, cur)
 	}
 	return unknownKind(p.Kind)
+}
+
+// verifyNodeUnchanged reports whether a special file is still the node its
+// descriptor describes. The dev/ino check ahead of it can be fooled by a reused
+// inode number, as [verifySymlinkUnchanged] explains, so the kind, the mode and
+// the device numbers are compared too: they are everything the archive holds.
+func verifyNodeUnchanged(p *Plan, cur os.FileInfo) error {
+	kind, err := Classify(p.Source, cur.Mode())
+	if err != nil || kind != p.Kind || nodeOf(kind, cur) != p.node {
+		return fmt.Errorf("%s: %w", p.Source, ErrSourceReplaced)
+	}
+	return nil
 }
 
 // verifyFileUnchanged reports whether a regular file still holds the bytes
@@ -424,6 +454,52 @@ func archiveSymlink(p *Plan) (*ArchiveResult, error) {
 	return &ArchiveResult{UUID: p.UUID, Kind: KindSymlink, Hash: "", Size: 0, SymlinkTarget: target}, nil
 }
 
+// archiveNode writes a special file's descriptor. Nothing is read from the node
+// and nothing is linked to it: the descriptor is the whole of the archived copy.
+// Its hash is the record's, so the restore can check the descriptor the way it
+// checks a file's bytes.
+func archiveNode(p *Plan) (*ArchiveResult, error) {
+	info, err := os.Lstat(p.Source)
+	if err != nil {
+		return nil, err
+	}
+	kind, err := Classify(p.Source, info.Mode())
+	if err != nil {
+		return nil, err
+	}
+	if kind != p.Kind {
+		return nil, fmt.Errorf("%s: %w: it was planned as a %s and is now a %s", p.Source, ErrSourceReplaced, p.Kind, kind)
+	}
+	p.node = nodeOf(kind, info)
+	descriptor := EncodeNode(p.node)
+	if err := writeNew(p.Dest, descriptor); err != nil {
+		return nil, fmt.Errorf("writing node descriptor: %w", err)
+	}
+	sum := sha256.Sum256(descriptor)
+	p.identity = info
+	p.hash = hex.EncodeToString(sum[:])
+	return &ArchiveResult{UUID: p.UUID, Kind: p.Kind, Hash: p.hash, Size: 0}, nil
+}
+
+// writeNew writes data to a file that must not exist yet, and removes what it
+// wrote if the write fails partway.
+func writeNew(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(path)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(path)
+		return err
+	}
+	return nil
+}
+
 func archiveFile(p *Plan) (*ArchiveResult, error) {
 	hash, err := hashFile(p.Source)
 	if err != nil {
@@ -555,26 +631,37 @@ func NewRestorePlan(uuid string, archiveDir string, dest string, kind Kind, syml
 }
 
 // EntryPresent reports whether the archived copy is there to be restored at
-// all. It is a stat, not a read: every restore makes this check, including the
-// ones that deliberately do no verification, because an absent entry is worth
-// naming as such rather than surfacing as a failed rename of a UUID.
+// all, and is the shape the record's kind says it is: every kind's entry is a
+// regular file, and a special file's is a descriptor of that kind. It is a stat
+// and, for a special file, a read of its few-byte descriptor: every restore
+// makes this check, including the ones that deliberately do no verification,
+// because an absent or mismatched entry is worth naming as such rather than
+// surfacing as a failed rename of a UUID.
 func EntryPresent(p *RestorePlan) error {
 	info, err := os.Lstat(p.Entry)
 	if err != nil {
 		return fmt.Errorf("%s: %w (%v)", p.Entry, ErrEntryMissing, err)
 	}
 	if !info.Mode().IsRegular() {
-		return fmt.Errorf("%s: %w: it is not a regular file", p.Entry, ErrEntryCorrupt)
+		return fmt.Errorf("%s: %w: the record names a %s, whose entry is a regular file, and the entry is %s",
+			p.Entry, ErrEntryCorrupt, p.Kind, articled(describeMode(info.Mode())))
 	}
-	return nil
+	switch p.Kind {
+	case KindFile, KindDirectory, KindSymlink:
+		return nil
+	case KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
+		_, err := readNode(p)
+		return err
+	}
+	return unknownKind(p.Kind)
 }
 
 // VerifyEntry checks the archived copy against what the record says about it,
 // reading only -- so a caller can refuse a destructive restore BEFORE the
 // destination is touched.
 //
-// The recorded hash means three different things, one per kind, and this is the
-// only place that states all three honestly:
+// The recorded hash means a different thing per kind, and this is the only
+// place that states each honestly:
 //
 //   - KindFile: recordedHash is the SHA-256 of the archived file's CONTENT, and
 //     the entry is that file. The check is exact: a byte that rotted in the
@@ -589,8 +676,13 @@ func EntryPresent(p *RestorePlan) error {
 //     construction. The check is therefore an equality: the entry must still
 //     name the target the record names. A hash comparison here would fail
 //     spuriously on every symlink ever archived.
+//   - A special file (KindFIFO, KindSocket, KindCharacterDevice,
+//     KindBlockDevice): recordedHash is the SHA-256 of the `.node` DESCRIPTOR,
+//     which is the whole of what the archive holds of the node, so the check is
+//     as exact as a file's. [EntryPresent] has already decoded the descriptor
+//     and matched its kind against the record's.
 //
-// A file or a tree whose record carries no hash cannot be verified at all, and
+// A file, a tree or a special file whose record carries no hash cannot be verified at all, and
 // that is [ErrUnverifiable] rather than a pass: the caller asked to destroy a
 // destination on the strength of a check that cannot be made.
 func VerifyEntry(p *RestorePlan, recordedHash string) error {
@@ -609,11 +701,49 @@ func VerifyEntry(p *RestorePlan, recordedHash string) error {
 				p.Entry, ErrEntryDiverged, string(recorded), p.SymlinkTarget)
 		}
 		return nil
-	case KindFile, KindDirectory:
+	case KindFile, KindDirectory, KindFIFO, KindSocket, KindCharacterDevice, KindBlockDevice:
 		return verifyEntryHash(p, recordedHash)
 	}
 	return unknownKind(p.Kind)
 }
+
+// RestoreNode recreates the special file the plan's descriptor describes at
+// the plan's destination. Like [RestoreSymlink] it does NOT consume the entry,
+// so a node that cannot be made -- a device without the privilege mknod needs
+// -- leaves the descriptor where it is.
+func RestoreNode(p *RestorePlan) error {
+	n, err := readNode(p)
+	if err != nil {
+		return err
+	}
+	return makeNode(p.Dest, n)
+}
+
+// readNode reads and decodes a node's descriptor, and refuses one that does
+// not describe the kind the record names.
+func readNode(p *RestorePlan) (Node, error) {
+	f, _, err := openRegular(p.Entry)
+	if err != nil {
+		return Node{}, fmt.Errorf("%s: %w (%v)", p.Entry, ErrEntryCorrupt, err)
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, maxNodeDescriptor+1))
+	if err != nil {
+		return Node{}, fmt.Errorf("reading the node descriptor %s: %w", p.Entry, err)
+	}
+	n, err := DecodeNode(data)
+	if err != nil {
+		return Node{}, fmt.Errorf("%s: %w: %v", p.Entry, ErrEntryCorrupt, err)
+	}
+	if n.Kind != p.Kind {
+		return Node{}, fmt.Errorf("%s: %w: the descriptor describes a %s and the record names a %s", p.Entry, ErrEntryCorrupt, n.Kind, p.Kind)
+	}
+	return n, nil
+}
+
+// maxNodeDescriptor bounds the read of a descriptor: [EncodeNode] never writes
+// more than a few dozen bytes, so anything past this is not a descriptor.
+const maxNodeDescriptor = 256
 
 // verifyEntryHash checks an entry's bytes against the hash the record carries.
 func verifyEntryHash(p *RestorePlan, recordedHash string) error {

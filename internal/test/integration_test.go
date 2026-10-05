@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stricttools/saferm/internal/testutil"
 	"github.com/stricttools/saferm/internal/trace"
@@ -84,8 +86,22 @@ func runSafermTraced(t *testing.T, homeDir, parentID string, args ...string) (st
 // Later entries win, so an entry here overrides the inherited one.
 func runSafermEnv(t *testing.T, homeDir string, extraEnv []string, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
+	return runSafermWithin(t, runLimit, homeDir, extraEnv, args...)
+}
 
-	cmd := exec.Command(safermBinary, args...)
+// runLimit bounds every saferm run a test makes. A run that outlives it is
+// killed and fails its test: a saferm that blocks -- on a FIFO it should never
+// have opened, say -- must fail the suite, not hang it.
+const runLimit = 2 * time.Minute
+
+// runSafermWithin is runSafermEnv with the bound stated: the run is killed, and
+// the test failed, if it has not exited within limit.
+func runSafermWithin(t *testing.T, limit time.Duration, homeDir string, extraEnv []string, args ...string) (stdout, stderr string, exitCode int) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, safermBinary, args...)
 
 	// Set SAFERM_HOME so saferm's BaseDir() uses the test directory directly.
 	// Strip ALL SAFERM_-prefixed vars from the inherited env first: a developer's
@@ -108,6 +124,10 @@ func runSafermEnv(t *testing.T, homeDir string, extraEnv []string, args ...strin
 	err := cmd.Run()
 	stdout = outBuf.String()
 	stderr = errBuf.String()
+	if ctx.Err() != nil {
+		t.Fatalf("saferm %s did not exit within %s and was killed\nstdout: %s\nstderr: %s",
+			strings.Join(args, " "), limit, stdout, stderr)
+	}
 
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {

@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 
+	"github.com/stricttools/saferm/internal/archive"
+
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
@@ -73,9 +75,15 @@ const (
 	featureUUIDHandles = "uuid-handles"
 )
 
+// kindFeaturePrefix starts the feature that names one kind of thing saferm
+// archives and restores: `kind-file`, `kind-fifo`, and one for each of
+// [archive.Kinds], generated from that list so a new kind is negotiable the
+// moment it exists. A consumer that hands saferm a FIFO asks for `kind-fifo`.
+const kindFeaturePrefix = "kind-"
+
 // features is the list the verb answers with, in a fixed order so two runs of
 // the same binary produce the same document.
-var features = []string{
+var features = append([]string{
 	featureGitIndexSwitches,
 	featureGroupID,
 	featureListLimit,
@@ -87,6 +95,15 @@ var features = []string{
 	featureTraceOrigin,
 	featureUsageReport,
 	featureUUIDHandles,
+}, kindFeatures()...)
+
+// kindFeatures is one feature per [archive.Kinds], in that list's order.
+func kindFeatures() []string {
+	out := make([]string, 0, len(archive.Kinds()))
+	for _, k := range archive.Kinds() {
+		out = append(out, kindFeaturePrefix+string(k))
+	}
+	return out
 }
 
 // capabilitiesPayloadSchema declares the probe's answer: the feature names, and

@@ -732,6 +732,13 @@ var pinnedFeatures = []string{
 	"trace-origin",
 	"usage-report",
 	"uuid-handles",
+	"kind-file",
+	"kind-directory",
+	"kind-symlink",
+	"kind-fifo",
+	"kind-socket",
+	"kind-character-device",
+	"kind-block-device",
 }
 
 func TestMachineSurface_CapabilitiesNamesTheFeaturesShipped(t *testing.T) {

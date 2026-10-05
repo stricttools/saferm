@@ -328,7 +328,11 @@ type restoreStep struct {
 func runRestore(ctx *strictcli.Context, p *archive.RestorePlan, overwrite bool) error {
 	fx := ctx.Effects()
 	dry := ctx.DryRun()
-	for _, step := range restoreSteps(p, overwrite) {
+	steps, err := restoreSteps(p, overwrite)
+	if err != nil {
+		return err
+	}
+	for _, step := range steps {
 		if step.act == nil || dry {
 			if err := step.seam(fx); err != nil {
 				return err
@@ -351,7 +355,7 @@ func runRestore(ctx *strictcli.Context, p *archive.RestorePlan, overwrite bool) 
 // only once that has worked. So any failure -- a refused symlink, a truncated
 // tar, a copy that ran out of space -- leaves the entry where it is and the
 // restore can simply be run again.
-func restoreSteps(p *archive.RestorePlan, overwrite bool) []restoreStep {
+func restoreSteps(p *archive.RestorePlan, overwrite bool) ([]restoreStep, error) {
 	var steps []restoreStep
 
 	if overwrite {
@@ -407,9 +411,28 @@ func restoreSteps(p *archive.RestorePlan, overwrite bool) []restoreStep {
 			},
 			consumeEntryStep(p),
 		)
+
+	case archive.KindFIFO, archive.KindSocket, archive.KindCharacterDevice, archive.KindBlockDevice:
+		// A special file holds no bytes, so the preview declares an empty write
+		// at the destination; the real act is a mkfifo or mknod the handle has
+		// no primitive for. A device made without the privilege mknod needs
+		// fails here, before the descriptor is consumed.
+		steps = append(steps,
+			restoreStep{
+				seam: func(fx *strictcli.Effects) error {
+					_, err := fx.Write(p.Dest, []byte(nil), strictcli.Resource("path:"+p.Dest))
+					return err
+				},
+				act: func() error { return archive.RestoreNode(p) },
+			},
+			consumeEntryStep(p),
+		)
+
+	default:
+		return nil, fmt.Errorf("restoring %s: unknown archive kind %q", p.Dest, string(p.Kind))
 	}
 
-	return steps
+	return steps, nil
 }
 
 // renameOut moves a file's archive entry to the destination through the effects
