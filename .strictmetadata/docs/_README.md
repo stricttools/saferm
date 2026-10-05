@@ -14,7 +14,7 @@ go install github.com/stricttools/saferm@v0
 Or via Homebrew (macOS/Linux):
 
 ```
-brew install smm-h/tap/saferm
+brew install stricttools/tap/saferm
 ```
 
 Delete a file (`--description` and `--on-error` are both mandatory):
@@ -51,7 +51,7 @@ A restore consumes the archived copy -- it is moved back out, not copied -- and 
 | Method | Command |
 |--------|---------|
 | Go | `go install github.com/stricttools/saferm@v0` |
-| Homebrew | `brew install smm-h/tap/saferm` |
+| Homebrew | `brew install stricttools/tap/saferm` |
 | npm | `npm install -g saferemove` (not yet published) |
 | PyPI | `pip install saferm` (not yet published) |
 
