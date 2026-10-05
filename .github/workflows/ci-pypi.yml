@@ -19,13 +19,246 @@ jobs:
     strategy:
       matrix:
         # requires-python: >= 3.8
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ['3.12', '3.13', '3.14']
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-      - run: uv python install ${{ matrix.python-version }}
-      - run: uv sync --locked
-      - run: uv run python -c "import saferm"
+    - uses: actions/checkout@v6
+    - uses: astral-sh/setup-uv@v7
+    - run: uv python install ${{ matrix.python-version }}
+    - run: uv sync --locked
+    - run: uv run python -c "import saferm"
+      # Listing what the upload carries takes building it, which needs the
+      # network, so the upload is built and checked here, on the candidate
+      # commit a release waits on, rather than before the release starts.
+    - name: Build the upload
+      run: uv build --out-dir "$RUNNER_TEMP/rlsbl-upload"
+      # A registry keeps every upload permanently: planning notes, release
+      # metadata, agent instructions, scratch output, and environment files
+      # are refused. The script is rlsbl's rule itself (rlsbl.private_paths).
+    - name: Check the upload carries no private paths
+      run: |
+        python3 - "$RUNNER_TEMP/rlsbl-upload" <<'PY'
+        """The paths a published upload must never carry, and the Python upload's check.
+
+        A package directory holds files that are the project's working state rather
+        than its product: planning notes, release metadata, agent instructions,
+        scratch output, and secrets. A registry keeps what it is sent, permanently, so
+        an upload that carries any of them is refused before it is published:
+
+        - npm packages, Go module zips, and Docker build contexts are listed offline
+          and refused before a release mutates anything (the ``upload-private-paths``
+          check);
+        - a Python upload can only be listed by building it, which needs the network,
+          so the pypi CI template builds it on the candidate commit and runs THIS
+          module over the result (``python3 - <dist dir>``, the module's own source
+          embedded in the workflow). That is why this module imports nothing outside
+          the standard library and nothing from rlsbl: the rule the check applies and
+          the rule CI applies are one text.
+
+        Paths are relative to the package directory: the root of an sdist or npm
+        tarball below its top-level directory, the root of a Go module zip below
+        ``module@version/``, the root of a Docker build context, or a wheel's install
+        root.
+        """
+
+        import fnmatch
+        import os
+        import sys
+        import tarfile
+        import zipfile
+
+        #: Directories private only at the package directory's root: the same name
+        #: deeper in may be ordinary source (a ``todo`` package, a test's
+        #: ``screenshots`` fixture). ``stricttools/`` is the family's earlier metadata
+        #: root.
+        PRIVATE_ROOT_DIRS = ("todo", "experiments", "screenshots", "stricttools")
+
+        #: Directories private at any depth: rlsbl's release state, the family's
+        #: metadata roots, and tool and agent state.
+        PRIVATE_DIRS = (
+            ".rlsbl",
+            ".rlsbl-monorepo",
+            ".strictmetadata",
+            ".stricttools",
+            ".claude",
+            ".selfdoc",
+            ".strictcli",
+        )
+
+        #: Agent instruction files, private at any depth.
+        PRIVATE_FILES = ("CLAUDE.md", "AGENTS.md")
+
+        #: Name patterns private at any depth, for a file or a directory alike:
+        #: environment files, and anything named local-only.
+        PRIVATE_NAME_PATTERNS = (".env*", "*.local-only")
+
+        #: A directory whose contents are test fixtures, never the project's own
+        #: state: Go's ``testdata`` convention. A fixture may hold any private name
+        #: as the input or expected output of a test.
+        FIXTURE_DIR = "testdata"
+
+
+        def exclude_entries():
+            """Every rule as a gitignore-syntax exclude entry, in declaration order.
+
+            The same spelling :func:`private_match` returns as a rule, so an entry a
+            refusal names is one this list holds.
+            """
+            return (
+                tuple(f"/{name}/" for name in PRIVATE_ROOT_DIRS)
+                + tuple(f"{name}/" for name in PRIVATE_DIRS)
+                + PRIVATE_FILES
+                + PRIVATE_NAME_PATTERNS
+            )
+
+
+        def private_match(rel):
+            """Why the package-relative path *rel* is private, or None when it is not.
+
+            Returns ``(rule, directory)``: *rule* is the exclude entry that names the
+            path, in gitignore syntax (``/todo/``, ``.claude/``, ``CLAUDE.md``,
+            ``.env*``); *directory* is the private directory holding the path, relative
+            to the package directory, or None when the path is a private file itself.
+            The outermost private component wins, so a whole private directory is one
+            rule however deep its files sit. Nothing under a ``testdata`` directory is
+            private.
+            """
+            parts = [p for p in rel.replace(os.sep, "/").split("/") if p and p != "."]
+            last = len(parts) - 1
+            if FIXTURE_DIR in parts[:last]:
+                return None
+            for i, part in enumerate(parts):
+                is_dir = i < last
+                directory = "/".join(parts[: i + 1]) if is_dir else None
+                if is_dir and i == 0 and part in PRIVATE_ROOT_DIRS:
+                    return "/" + part + "/", directory
+                if is_dir and part in PRIVATE_DIRS:
+                    return part + "/", directory
+                if not is_dir and part in PRIVATE_FILES:
+                    return part, None
+                for pattern in PRIVATE_NAME_PATTERNS:
+                    if fnmatch.fnmatchcase(part, pattern):
+                        return pattern, directory
+            return None
+
+
+        def private_paths_in(paths):
+            """``(rel, rule, directory)`` for every private path in *paths*, in order."""
+            found = []
+            for rel in paths:
+                match = private_match(rel)
+                if match is not None:
+                    found.append((rel, match[0], match[1]))
+            return found
+
+
+        def archive_paths(artifact):
+            """The package-relative file paths a built artifact carries.
+
+            An sdist (``.tar.gz``) and an npm tarball (``.tgz``) are read below their
+            one top-level directory, a Go module zip below ``module@version/``, and a
+            wheel from its install root, leaving out its ``.dist-info`` metadata.
+            """
+            name = os.path.basename(artifact)
+            if name.endswith(".whl"):
+                with zipfile.ZipFile(artifact) as archive:
+                    return [
+                        n for n in archive.namelist()
+                        if not n.endswith("/") and ".dist-info/" not in n
+                    ]
+            if name.endswith(".zip"):
+                with zipfile.ZipFile(artifact) as archive:
+                    return [
+                        n.split("@", 1)[1].split("/", 1)[1]
+                        for n in archive.namelist()
+                        if not n.endswith("/") and "@" in n and "/" in n.split("@", 1)[1]
+                    ]
+            if name.endswith((".tar.gz", ".tgz")):
+                with tarfile.open(artifact) as archive:
+                    return [
+                        m.name.split("/", 1)[1]
+                        for m in archive.getmembers()
+                        if m.isfile() and "/" in m.name
+                    ]
+            raise ValueError(f"{artifact}: not an sdist, wheel, npm tarball, or Go module zip")
+
+
+        def read_build_backend(pyproject_path):
+            """The ``[build-system] build-backend`` of *pyproject_path*, or ``""``."""
+            import tomllib
+
+            try:
+                with open(pyproject_path, "rb") as handle:
+                    data = tomllib.load(handle)
+            except (OSError, tomllib.TOMLDecodeError):
+                return ""
+            backend = data.get("build-system", {}).get("build-backend", "")
+            return backend if isinstance(backend, str) else ""
+
+
+        def python_fix(backend, kind, rel, rule, directory):
+            """How to keep *rel* out of a Python *kind* (``sdist`` or ``wheel``).
+
+            Named per build backend, since each spells its exclusions differently.
+            """
+            if backend.startswith("hatchling"):
+                return (
+                    f'add "{rule}" to exclude under [tool.hatch.build.targets.{kind}] '
+                    f"in pyproject.toml"
+                )
+            if backend.startswith("uv_build"):
+                key = "source-exclude" if kind == "sdist" else "wheel-exclude"
+                return f'add "{rule}" to {key} under [tool.uv.build-backend] in pyproject.toml'
+            if backend.startswith("setuptools"):
+                if kind == "wheel":
+                    return (
+                        f"leave {directory or rel} out of the packages and package data "
+                        f"under [tool.setuptools] in pyproject.toml"
+                    )
+                line = f"prune {directory}" if directory else f"exclude {rel}"
+                return f'add "{line}" to MANIFEST.in'
+            shown = backend or "the default build backend"
+            return f"exclude {rule} from the {kind} in the configuration of {shown}"
+
+
+        def main(argv):
+            """Refuse every private path in the Python artifacts built into ``argv[0]``.
+
+            Run by the pypi CI template from the package directory, after ``uv build
+            --out-dir <dir>``. Exit status 1 when anything is refused.
+            """
+            dist = argv[0]
+            backend = read_build_backend("pyproject.toml")
+            refused = []
+            for name in sorted(os.listdir(dist)):
+                if name.endswith(".tar.gz"):
+                    kind = "sdist"
+                elif name.endswith(".whl"):
+                    kind = "wheel"
+                else:
+                    continue
+                for rel, rule, directory in private_paths_in(
+                    archive_paths(os.path.join(dist, name))
+                ):
+                    refused.append(
+                        f"{name} would ship {rel}, a private path ({rule}): "
+                        + python_fix(backend, kind, rel, rule, directory)
+                    )
+            for line in refused:
+                print(f"::error::{line}")
+            if refused:
+                print(
+                    f"{len(refused)} private path(s) in the upload; a registry keeps "
+                    f"every upload permanently, so this release is refused until each "
+                    f"is excluded"
+                )
+                return 1
+            print("the upload carries no private paths")
+            return 0
+
+
+        if __name__ == "__main__":
+            sys.exit(main(sys.argv[1:]))
+        PY
     defaults:
       run:
-        working-directory: ./pypi/
+        working-directory: pypi

@@ -30,10 +30,10 @@ changelog:
 
 brews:
   - repository:
-      owner: smm-h
+      owner: stricttools
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: "https://github.com/smm-h/saferm"
+    homepage: "https://github.com/stricttools/saferm"
     description: "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag"
     license: "MIT"
     install: |
