@@ -24,6 +24,13 @@ var (
 	ErrRecursiveRequired = errors.New("target is a directory; recursive flag required")
 	ErrHashMismatch      = errors.New("hash mismatch after copy")
 
+	// ErrNotRegularFile is a read that was about to consume something other
+	// than a regular file's bytes: a FIFO (whose read blocks until a writer
+	// appears and then drains what it sends), a socket, or a device. Every path
+	// that reads a file's content opens it through [openRegular], which is the
+	// one place this is decided.
+	ErrNotRegularFile = errors.New("not a regular file")
+
 	// What a restore can find wrong with an archived copy before it touches
 	// anything at the destination. See [VerifyEntry] for what each kind's hash
 	// does and does not prove.
@@ -723,9 +730,55 @@ func NewUUID() string {
 		uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:16])
 }
 
-// hashFile computes the SHA-256 hex digest of a file by streaming.
+// openRegular opens path for reading its content, and refuses anything that is
+// not a regular file at the moment it is opened.
+//
+// The check is on the opened descriptor, not on an earlier stat of the path:
+// the path can be swapped between a stat and an open, and a FIFO swapped in
+// there would block the read until a writer appeared and then hand the archival
+// whatever that writer sent. The open itself cannot block (see openReadFlags),
+// so the fstat always gets to run.
+func openRegular(path string) (*os.File, os.FileInfo, error) {
+	f, err := os.OpenFile(path, openReadFlags, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, nil, err
+	}
+	if !info.Mode().IsRegular() {
+		f.Close()
+		return nil, nil, fmt.Errorf("%s: %w: it is a %s", path, ErrNotRegularFile, describeMode(info.Mode()))
+	}
+	return f, info, nil
+}
+
+// describeMode names the type of file a mode describes, for an error message.
+func describeMode(m fs.FileMode) string {
+	switch {
+	case m.IsRegular():
+		return "regular file"
+	case m.IsDir():
+		return "directory"
+	case m&fs.ModeSymlink != 0:
+		return "symlink"
+	case m&fs.ModeNamedPipe != 0:
+		return "FIFO"
+	case m&fs.ModeSocket != 0:
+		return "socket"
+	case m&fs.ModeCharDevice != 0:
+		return "character device"
+	case m&fs.ModeDevice != 0:
+		return "block device"
+	}
+	return "irregular file"
+}
+
+// hashFile computes the SHA-256 hex digest of a regular file by streaming.
 func hashFile(path string) (string, error) {
-	f, err := os.Open(path)
+	f, _, err := openRegular(path)
 	if err != nil {
 		return "", err
 	}
@@ -740,12 +793,7 @@ func hashFile(path string) (string, error) {
 
 // copyFile copies src to dst, preserving permissions.
 func copyFile(src, dst string) error {
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	srcFile, err := os.Open(src)
+	srcFile, srcInfo, err := openRegular(src)
 	if err != nil {
 		return err
 	}
@@ -864,7 +912,7 @@ func createTarZst(srcDir string, dstPath string) (map[string]member, error) {
 			return nil
 		}
 
-		f, err := os.Open(path)
+		f, _, err := openRegular(path)
 		if err != nil {
 			return err
 		}
