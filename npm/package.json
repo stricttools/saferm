@@ -31,5 +31,8 @@
   ],
   "bugs": {
     "url": "https://github.com/stricttools/saferm/issues"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
