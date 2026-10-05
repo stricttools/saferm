@@ -79,8 +79,9 @@ $ saferm delete --on-error abort --description "broken migration, rewriting from
 archived: [3] 6f1c0e2a-6c9e-4a24-9d1f-2b0f3f5b7c11 /home/user/project/db/migrations (14 KB)
 
 $ saferm list
-ID  PATH                   SIZE   DELETED
-3   db/migrations/         14K    2 minutes ago
+ID     Path                                     Size       Age              Status
+------ ---------------------------------------- ---------- ---------------- --------
+3      /home/user/project/db/migrations [directory] 14 KB  2 minutes ago    archived
 
 $ saferm info 3
 ID:          3
@@ -99,6 +100,8 @@ Parent cmd:  claude
 $ saferm undelete 3
 Restored db/migrations/
 ```
+
+`list` marks every path that is not a regular file with its node type in brackets, such as `[directory]` or `[symlink]`: the same word `info` prints as its Type and the `--json` payloads carry as `node_type`.
 
 ## Identifiers and the error mode
 
