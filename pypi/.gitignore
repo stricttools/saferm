@@ -1,0 +1,8 @@
+# hatchling reads the first .gitignore it finds from this directory upward, and
+# matches its patterns against this directory. This file is that one, so the
+# repository root's `/saferm` -- the Go binary there -- is never read against
+# pypi/, where it would exclude the package itself.
+/dist/
+*.egg-info/
+/saferm/_bin/
+__pycache__/

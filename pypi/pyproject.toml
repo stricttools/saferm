@@ -24,14 +24,6 @@ Repository = "https://github.com/stricttools/saferm"
 Issues = "https://github.com/stricttools/saferm/issues"
 Changelog = "https://github.com/stricttools/saferm/blob/main/CHANGELOG.md"
 
-[tool.hatch.build]
-# The repository's .gitignore ignores the Go binary at its root as `/saferm`,
-# and hatchling matches that anchored pattern against this directory instead,
-# where it excludes the package itself. The build reads no VCS ignore file and
-# names what it leaves out here.
-ignore-vcs = true
-exclude = ["/dist/", "/*.egg-info/", "/saferm/_bin/", "__pycache__/"]
-
 [tool.hatch.build.targets.wheel]
 packages = ["saferm"]
 

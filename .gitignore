@@ -13,7 +13,6 @@ dist/
 .env
 .env.local
 *.local-only
-pypi/saferm/_bin/
 .wrangler/
 
 .rlsbl-monorepo/lock
