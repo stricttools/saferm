@@ -64,7 +64,8 @@
     {
       "template": ".strictmetadata/docs/_README.md",
       "outputs": [
-        "README.md"
+        "README.md",
+        "pypi/README.md"
       ]
     }
   ],
