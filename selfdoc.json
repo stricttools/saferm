@@ -55,8 +55,18 @@
     "table-exit-codes": ".strictmetadata/docs/_directives/exit_codes.py"
   },
   "root_files": [
-    ".strictmetadata/docs/_CLAUDE.md",
-    ".strictmetadata/docs/_README.md"
+    {
+      "template": ".strictmetadata/docs/_CLAUDE.md",
+      "outputs": [
+        ".claude/CLAUDE.md"
+      ]
+    },
+    {
+      "template": ".strictmetadata/docs/_README.md",
+      "outputs": [
+        "README.md"
+      ]
+    }
   ],
   "gen": {
     "exclude": [
