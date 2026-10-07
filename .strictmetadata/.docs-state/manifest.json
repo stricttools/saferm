@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "name": "saferm",
+  "name": "release-checkout",
   "slug": "saferm",
   "version": "0.10.2",
   "description": "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag",
@@ -1852,7 +1852,7 @@
     }
   ],
   "posts": [],
-  "last_gen": "2026-10-05T20:33:06.935688+00:00",
+  "last_gen": "2026-10-07T00:08:46.654796+00:00",
   "theme": "minimal",
   "vocabulary": {
     "accepted": [
