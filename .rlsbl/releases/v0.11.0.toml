@@ -25,3 +25,7 @@ strictcli 0.38.0 moves the `--json` envelope to `interface_version` 3 and replac
 # blog = false
 include = ["go", "npm", "pypi"]
 exclude = []
+candidate_sha = "446477495cd09c718f3727ee12ed65083ae021a4"
+
+[tree_hashes]
+"." = "c60eaa8f4e462646c599caf070e1cb766895fbdb"
