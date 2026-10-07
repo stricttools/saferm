@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saferm"
-version = "0.10.2"
+version = "0.11.0"
 description = "The `rm` replacement that is safe to hand to your AI Agents: deleted files can be restored, know exactly which session deleted a file, when, and why, with the reason being a required flag"
 readme = "README.md"
 license = "MIT"
