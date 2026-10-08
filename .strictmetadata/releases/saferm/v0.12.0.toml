@@ -9,3 +9,6 @@ context = ""
 # The targets released, and the ones left out; between them they name every target of the releasable's members.
 include = ["go", "npm", "pypi"]
 exclude = []
+release_commit = "383a3440f7996ef7a5dc70177a6a8f77293cddae"
+[released_trees]
+"." = "2a319e6a174e4d84fe3634c78f3abae51705052d"
