@@ -8,14 +8,10 @@
     "url": "git+https://github.com/stricttools/saferm.git"
   },
   "homepage": "https://smmh.dev/saferm/",
-  "scripts": {
-    "postinstall": "node install.js"
-  },
   "bin": {
-    "saferm": "bin/saferm"
+    "saferm": "bin/index.js"
   },
   "files": [
-    "install.js",
     "bin/"
   ],
   "keywords": [
