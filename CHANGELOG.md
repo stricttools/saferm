@@ -2,6 +2,18 @@
 
 # Changelog
 
+## 0.12.0
+
+saferm installs from npm and PyPI with no install script and no download: the binary ships in per-platform npm packages and PyPI binary wheels, for Linux and macOS on x64 and arm64.
+
+### Breaking
+
+- Releases carry no Windows archive any more, and the npm and PyPI packages support Linux and macOS on x64 and arm64 only; on Windows, install with `go install github.com/stricttools/saferm@v0`. The PyPI package `saferm` no longer contains a Python module, so `import saferm` and `python -m saferm` stop working; run the `saferm` command it installs.
+
+### Features
+
+- The npm package `saferemove` installs the `saferm` binary with no install script: each platform's binary ships in its own package (`saferemove-linux-x64`, `saferemove-linux-arm64`, `saferemove-darwin-x64`, and `saferemove-darwin-arm64`), which npm picks through `optionalDependencies`, so an install with scripts turned off (npm's default from npm 12) still provides `saferm` and nothing is downloaded at install time. The PyPI package `saferm` is a binary wheel per platform carrying the binary itself, with no download on first run.
+
 ## 0.11.0
 
 A fast list on large archives, with a default limit of 50, --limit, --since, and an index-driven --path; a new usage report of the archive's disk use; purge selecting and sizing only what it destroys; and FIFOs, sockets, and devices archived and restored instead of read, under one node_type column in the archive database, whose migration repairs the symlinks and FIFOs older versions recorded as files; and the --json envelope at interface_version 3, with the help document printed by saferm help --json.
