@@ -1,4 +1,0 @@
-{"format_version":1,"commits":["10ddbe87afc01edf0f9b9dcd8b75b6b8f65888de"],"user_facing":true,"description":"**Automatic git index management.** When deleting a git-tracked file, saferm now runs `git rm --cached` to stage the removal. When restoring via `undelete`, it runs `git add`. Use `--no-git` on delete to suppress. Both operations are best-effort -- failures produce warnings, not errors.","type":"feature"}
-{"format_version":1,"commits":["0a2c887fd3eab8758edeeb623ef5966e01613a49","80a61164cfbc8f170d3fe2558f53fab5b68ec067","805418d0ffa889039269d155fb848cec99e9b3d6"],"user_facing":false}
-{"format_version":1,"commits":["295ecbf3d35fb092aa05c969b68bac4e41f58a66","8417b3b064d93342e0a5ffd27879b5355e98b430","6f4e43e342f85dade312238e1e0edb58d1bfbb38"],"user_facing":false}
-{"format_version":1,"commits":["e91edef1470f8b3df7bcab8706b54b1b25707e1d"],"user_facing":false}

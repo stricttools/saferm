@@ -1,0 +1,40 @@
+format_version = 1
+repository_layout = "standalone"
+release_branches = ["main", "master"]
+
+[timeouts]
+push_seconds = 120
+
+[[releasables]]
+name = "saferm"
+tag_format = "v{version}"
+publish_mode = "ci"
+
+[[members]]
+path = "."
+name = "root"
+releasable = "saferm"
+targets = [{ name = "go" }, { name = "npm", path = "npm" }, { name = "pypi", path = "pypi" }]
+
+[[members.pipelines]]
+name = "go"
+type = "go"
+target = "go"
+local = true
+artifact = "binary"
+install_paths = ["."]
+homebrew_tap = "homebrew-tap"
+
+[[members.pipelines]]
+name = "npm"
+type = "npm"
+target = "npm"
+local = false
+artifact = "package"
+
+[[members.pipelines]]
+name = "pypi"
+type = "pypi"
+target = "pypi"
+local = false
+artifact = "package"

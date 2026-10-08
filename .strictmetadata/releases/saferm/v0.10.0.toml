@@ -1,0 +1,43 @@
+# strictspec document version gate (do not remove)
+format_version = 2
+# Version bump type: patch, minor, major, infra, or prerelease
+#   prerelease: advance an existing pre-release (0.6.0-beta.0 -> -beta.1)
+bump = "minor"
+# Short description of this release (required)
+description = "Every flag and argument declares whether it must be given, purge's selection rule becomes a declaration the parser enforces, and the machine envelope advances to version 2."
+# Optional context explaining why these changes were made
+context = """
+saferm builds against a CLI framework release that refuses a flag whose presence
+is unstated, and refuses a value default on any flag or argument of a command
+that changes things -- because on such a command a value the framework picked is
+a value the framework writes. Every switch on delete, undelete and purge
+therefore declares itself optional and names its fallback in its own help text,
+and behaviour on absence is unchanged throughout.
+
+The same release makes co-occurrence rules declarable, which is what retires
+purge's hand-written selection check. The rule that at least one of the target
+identifiers, --older-than, --larger-than or --all must be given now lives in one
+place: the parser enforces it, --help renders it, and the dumped schema
+publishes it. The cost is a different refusal sentence and a different exit
+code, both of which are in the changelog rather than left to be discovered by a
+script that reads them.
+
+Three consumer-visible spellings move with the framework: the envelope's
+interface_version, the writes member beside it, and config set's argv. None of
+the invocation shapes programs already build -- delete with --on-error, -r, -f,
+--description; undelete, list, info, capabilities -- changed at all.
+"""
+# Pre-release channel: alpha, beta, rc, or stable (ordered;
+# demotion is an error). With patch/minor/major it ENTERS the
+# channel (0.5.2 + minor + alpha -> 0.6.0-alpha.0); with
+# bump = "prerelease" it promotes, and "stable" strips the
+# suffix. See docs/release-workflow.md#the-pre-release-channel.
+# preid = ""
+# Set to true to generate a blog post for this release
+# blog = false
+include = ["go", "npm", "pypi"]
+exclude = []
+release_commit = "b601d23ea8fc5db5d427231dd829abbdfc5e5080"
+
+[released_trees]
+"." = "10dad57c4ee31a4afaef7d0c97af608aa6f62a0b"

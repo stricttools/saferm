@@ -1,0 +1,14 @@
+# strictspec document version gate (do not remove)
+format_version = 2
+# Version bump type: patch, minor, or major
+bump = "minor"
+# Short description of this release (required)
+description = "Purge size filtering and dry-run preview"
+# Optional context explaining why these changes were made
+context = ""
+include = ["go", "npm", "pypi"]
+exclude = []
+release_commit = "361b02b5e4ec290079c5035690caa633a1b1cc15"
+
+[released_trees]
+"." = "fbe3511f38d924d4538004b982a43571ca26a377"

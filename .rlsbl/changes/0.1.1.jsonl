@@ -1,4 +1,0 @@
-{"format_version":1,"commits":["7e16897fed8747c85aeefd2bbf7d1cb8d3636ecb"],"user_facing":false}
-{"format_version":1,"commits":["3a05ff286321e8c452037d194d083c8eafbb5fa9"],"user_facing":false}
-{"format_version":1,"commits":["c2a4f46c9c721810d220eceb456eccdef9397bf6"],"user_facing":true,"description":"**New feature.** SAFERM_HOME environment variable allows overriding the default config/data directory, enabling isolated testing and custom configurations.","type":"feature"}
-{"format_version":1,"commits":["cc74a8320aba2cb40447b83488eaa3dd908d4d92","f19cd2c7ca73a2d05043a77f45219dc9d7edd52b","c31bea385e66006d8c3a7cae18a1297dac78faec","d0d928c910ec4b7717cd182f1cc8b530a97a1d24","2ea66e84370030bb723069de92328a2756afab02","564d298ed7edeeecdd58b9c97b4ce7e391dbd511","dadd70a8957e5411dce84eec617a4da85ce0eaed"],"user_facing":false}

@@ -1,0 +1,2 @@
+{"format_version":2,"id":"18dc881579239e81a133ce433196436ab952f00fba29a971","commits":["91ff0dc3eb7044b19d2ce4733d93c0bd434f1849"],"user_facing":true,"description":"**New feature.** npm and PyPI binary wrapper packages for easier installation via `npm install -g saferm` and `pipx install saferm`.","type":"feature"}
+{"format_version":2,"id":"18dc88157924cd90d2c09688b8e14ee1ac653fe41f3d5241","commits":["2e31426e610266f0c90369ff24838aa0683585c0","3284c63fca95c37a8603e189c177df070268846f"],"user_facing":false}

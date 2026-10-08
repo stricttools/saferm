@@ -1,0 +1,14 @@
+# strictspec document version gate (do not remove)
+format_version = 2
+# Version bump type: patch, minor, or major
+bump = "minor"
+# Short description of this release (required)
+description = "Config migration to strictcli"
+# Optional context explaining why these changes were made
+context = "Config is now managed by strictcli's built-in config system instead of a hand-rolled TOML loader. The config file stays at ~/.saferm/config.toml with the same keys, but you get config show/set/path/edit subcommands for free. The internal/config package is removed."
+include = ["go", "npm", "pypi"]
+exclude = []
+release_commit = "6c317c4b3b85bafee5e243bb99aa870894b7a2bf"
+
+[released_trees]
+"." = "f0f89f67e1f4556e0dbe0fba86b067ecc55e89bc"

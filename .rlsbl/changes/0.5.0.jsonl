@@ -1,3 +1,0 @@
-{"format_version":1,"commits":["6f84472be05088401690bbc23eb1adcc49d49606"],"user_facing":true,"description":"**New feature.** `saferm purge --larger-than SIZE` filters by file size (e.g. `100MB`, `1GB`). `saferm purge --dry-run` previews what would be purged without deleting.","type":"feature"}
-{"format_version":1,"commits":["d8e7b1cbecef4a80ed48268dd21a576760cb47a8","1268986606428ec32a101ca13ca82791e349e340"],"user_facing":false}
-{"format_version":1,"commits":["872e3b2792e1dc1e2b98c4bf4ac7cd162c89b4e4"],"user_facing":false}
