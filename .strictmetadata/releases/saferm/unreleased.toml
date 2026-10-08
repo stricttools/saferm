@@ -1,9 +1,9 @@
 # The next release of saferm. Fill in bump and description, then run `rlsbl release run --watch`.
 format_version = 2
 # How the release moves the version: patch, minor, major, or infra (moved as a patch, recorded as infra).
-bump = ""
+bump = "minor"
 # What this release is, in a sentence or two. Required.
-description = ""
+description = "saferm installs from npm and PyPI with no install script and no download: the binary ships in per-platform npm packages and PyPI binary wheels, for Linux and macOS on x64 and arm64."
 # Why these changes were made. Optional.
 context = ""
 # The targets released, and the ones left out; between them they name every target of the releasable's members.
